@@ -17,8 +17,8 @@ const COLUMNS = [
   'Response at', 'Follow-up on', 'Notes',
 ];
 
-const STATUSES = ['New', 'Applied', 'Viewed', 'Replied', 'Interview', 'Offer', 'Rejected', 'No reply', 'Skipped'];
-const ACTIONS = ['Alerted', 'Applied', 'Skipped'];
+const STATUSES = ['Applied', 'Needs you', 'Viewed', 'Replied', 'Interview', 'Offer', 'Rejected', 'No reply', 'Skipped'];
+const ACTIONS = ['Applied', 'Needs you', 'Skipped'];
 
 // Pings are muted between these hours (IST). Rows are still logged.
 const QUIET_FROM = 23;
@@ -69,7 +69,8 @@ function sheet_() {
 
 /**
  * Logs one job to a source tab. Skips it if the job link is already there.
- * job: { company, role, location, applicants, jobLink, postLink, poster, postedAt, notes }
+ * job: { company, role, location, applicants, jobLink, postLink, poster, postedAt, appliedAt,
+ *        resume, note, action, status, notes }
  * Returns true when a new row was added.
  */
 function addJob(tab, job) {
@@ -91,8 +92,11 @@ function addJob(tab, job) {
     'Job link': job.jobLink || '',
     'Post link': job.postLink || '',
     'Recruiter / poster': job.poster || '',
-    'Action': 'Alerted',
-    'Status': 'New',
+    'Applied at': job.appliedAt || '',
+    'Resume version': job.resume || '',
+    'Note used': job.note || '',
+    'Action': job.action || 'Applied',
+    'Status': job.status || job.action || 'Applied',
     'Notes': job.notes || '',
   };
   sh.appendRow(COLUMNS.map(c => (c in row ? row[c] : '')));

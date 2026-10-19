@@ -3,327 +3,218 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@600&display=swap">
 <style>
-/* Layout: a sticky stage holds one flow diagram; scrolling moves a camera along it and lights up each step. */
+/* Layout: one vertical flow. Each step is a node on a single spine; side outcomes hang off decisions. Scrolling lights the current node. */
 :root {
   --bg: #f6f7fa;
   --fg: #1c2230;
   --muted: #5a6478;
-  --line: #c3c9d6;
+  --line: #c9cfdb;
   --surface: #ffffff;
   --accent: #2f5bd3;
-  --cloud: #e3ecff; --cloud-ink: #2f5bd3;
-  --phone: #ffefcc; --phone-ink: #a06a05;
-  --you: #d9f4e4; --you-ink: #1f8a52;
-  --mac: #ece2ff; --mac-ink: #6c46c9;
-  --stop: #eceef3; --stop-ink: #6a7386;
+  --mac: #ece2ff; --mac-ink: #5a34b5;
+  --site: #e3ecff; --site-ink: #2449b0;
+  --sheet: #d9f4e4; --sheet-ink: #17693e;
+  --you: #ffefcc; --you-ink: #7a4d00;
+  --stop: #eceef3; --stop-ink: #4a5366;
+  --risk: #fde3e1; --risk-ink: #b3261e;
   --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #12151c; --fg: #e6e9f0; --muted: #9aa3b5; --line: #3a4252; --surface: #1a1e27; --accent: #8aa8ff;
-    --cloud: #1f2c4a; --cloud-ink: #9db6ff; --phone: #3a2e16; --phone-ink: #f2c15e;
-    --you: #173a28; --you-ink: #6fd59c; --mac: #2b2244; --mac-ink: #c0a8ff; --stop: #252a35; --stop-ink: #9aa3b5;
+    --mac: #2b2244; --mac-ink: #c0a8ff; --site: #1f2c4a; --site-ink: #9db6ff;
+    --sheet: #173a28; --sheet-ink: #6fd59c; --you: #3a2e16; --you-ink: #f2c15e;
+    --stop: #252a35; --stop-ink: #9aa3b5; --risk: #3d1d1b; --risk-ink: #ff9b93;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12151c; --fg: #e6e9f0; --muted: #9aa3b5; --line: #3a4252; --surface: #1a1e27; --accent: #8aa8ff;
-  --cloud: #1f2c4a; --cloud-ink: #9db6ff; --phone: #3a2e16; --phone-ink: #f2c15e;
-  --you: #173a28; --you-ink: #6fd59c; --mac: #2b2244; --mac-ink: #c0a8ff; --stop: #252a35; --stop-ink: #9aa3b5;
+  --mac: #2b2244; --mac-ink: #c0a8ff; --site: #1f2c4a; --site-ink: #9db6ff;
+  --sheet: #173a28; --sheet-ink: #6fd59c; --you: #3a2e16; --you-ink: #f2c15e;
+  --stop: #252a35; --stop-ink: #9aa3b5; --risk: #3d1d1b; --risk-ink: #ff9b93;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font-body); margin: 0; }
-.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-
-.scrolly { position: relative; }
-.stage {
-  position: sticky; top: env(safe-area-inset-top, 0px);
-  height: 100vh; height: 100dvh;
-  display: grid; grid-template-rows: auto 1fr auto;
+body {
+  background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font-body); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 72px;
 }
-.bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-block: 12px; border-bottom: 1px solid var(--line); background: var(--bg); }
-.bar h1 { font-size: 1rem; margin: 0; margin-right: auto; }
-.count { font: 600 0.75rem/1 var(--font-mono); color: var(--muted); letter-spacing: 0.06em; }
-.chip { font: 600 0.8rem/1 var(--font-body); padding: 6px 10px; border-radius: 999px; }
-.chip.cloud { background: var(--cloud); color: var(--cloud-ink); }
-.chip.phone { background: var(--phone); color: var(--phone-ink); }
-.chip.you { background: var(--you); color: var(--you-ink); }
-.chip.mac { background: var(--mac); color: var(--mac-ink); }
-.chip.all { background: var(--stop); color: var(--fg); }
+main { max-width: 620px; margin: 0 auto; }
+h1, h2, h3 { margin: 0; line-height: 1.25; text-wrap: balance; }
+p { margin: 0; }
+.eyebrow { font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 
-.canvas { position: relative; overflow: hidden; min-height: 0; }
-.canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-#cam { transform-origin: 0 0; transform-box: view-box; transition: transform .8s cubic-bezier(.4,.1,.2,1); }
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding: 10px max(16px, env(safe-area-inset-left, 0px));
+}
+.top-inner { max-width: 620px; margin: 0 auto; display: flex; gap: 10px; align-items: center; }
+.top-inner b { font-size: 0.95rem; margin-right: auto; }
+.count { font: 600 0.75rem/1 var(--font-mono); color: var(--muted); }
 
-.node rect { stroke-width: 1.5; transition: opacity .4s, stroke .3s, stroke-width .3s; }
-.node text { font: 700 15px var(--font-body); text-anchor: middle; dominant-baseline: central; transition: opacity .4s; }
-.node.cloud rect { fill: var(--cloud); stroke: var(--cloud-ink); } .node.cloud text { fill: var(--cloud-ink); }
-.node.phone rect { fill: var(--phone); stroke: var(--phone-ink); } .node.phone text { fill: var(--phone-ink); }
-.node.you rect { fill: var(--you); stroke: var(--you-ink); } .node.you text { fill: var(--you-ink); }
-.node.mac rect { fill: var(--mac); stroke: var(--mac-ink); } .node.mac text { fill: var(--mac-ink); }
-.node.stop rect { fill: var(--stop); stroke: var(--stop-ink); } .node.stop text { fill: var(--stop-ink); }
-.node.decision rect { stroke-dasharray: 6 4; }
-.node { opacity: 0.18; transition: opacity .4s; }
-.node.seen { opacity: 1; }
-.node.now { opacity: 1; }
-.node.now rect { stroke: var(--accent); stroke-width: 3.5; stroke-dasharray: none; }
+.tag { display: inline-block; font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; }
+.mac { background: var(--mac); color: var(--mac-ink); }
+.site { background: var(--site); color: var(--site-ink); }
+.sheet { background: var(--sheet); color: var(--sheet-ink); }
+.you { background: var(--you); color: var(--you-ink); }
+.stop { background: var(--stop); color: var(--stop-ink); }
+.risk { background: var(--risk); color: var(--risk-ink); }
 
-.edge path { fill: none; stroke: var(--line); stroke-width: 2; transition: stroke .3s, opacity .4s; opacity: .35; }
-.edge.seen path { stroke: var(--muted); opacity: 1; }
-.edge.now path { stroke: var(--accent); stroke-width: 2.5; opacity: 1; }
-.edge text { font: 600 12px var(--font-mono); fill: var(--muted); paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; text-anchor: middle; dominant-baseline: central; opacity: 0; transition: opacity .4s; }
-.edge.seen text, .edge.now text { opacity: 1; }
-.edge.now text { fill: var(--accent); }
+.intro { padding-block: 36px 28px; display: grid; gap: 12px; }
+.intro h1 { font-size: 1.9rem; }
+.intro p { color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; }
 
-.caption { padding-block: 14px 18px; border-top: 1px solid var(--line); background: var(--surface); display: grid; gap: 6px; }
-.caption-inner { max-width: 640px; width: 100%; margin: 0 auto; display: grid; gap: 4px; }
-.caption h2 { font-size: 1.15rem; margin: 0; text-wrap: balance; }
-.caption p { margin: 0; color: var(--muted); }
-.hint { font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+/* The flow */
+.flow { display: grid; }
+.node { display: grid; grid-template-columns: 36px 1fr; column-gap: 12px; }
+.rail { position: relative; display: flex; justify-content: center; }
+.rail::before { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.node:first-child .rail::before { top: 22px; }
+.node:last-child .rail::before { bottom: calc(100% - 22px); }
+.dot {
+  position: relative; margin-top: 12px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg); border: 2px solid var(--line);
+  font: 600 0.68rem/18px var(--font-mono); text-align: center; color: var(--muted);
+  transition: background .25s, border-color .25s, color .25s;
+}
+.node.on .dot { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.card {
+  margin-block: 6px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; display: grid; gap: 8px; min-width: 0;
+  transition: border-color .25s, box-shadow .25s;
+}
+.node.on .card { border-color: var(--accent); box-shadow: 0 8px 28px -16px var(--accent); }
+.card h3 { font-size: 1.08rem; }
+.card p { color: var(--muted); font-size: 0.96rem; }
+.card.decision { border-style: dashed; }
+.node.on .card.decision { border-style: solid; }
+.outs { display: grid; gap: 6px; }
+.out { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; font-size: 0.93rem; }
+.out .tag { white-space: nowrap; }
+.loop { font: 600 0.75rem/1.3 var(--font-mono); color: var(--muted); }
 
-.triggers { margin-top: -100vh; margin-top: -100dvh; pointer-events: none; }
-.trigger { height: 85vh; height: 85dvh; }
-
-.legend { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 28px 56px; max-width: 640px; margin: 0 auto; }
-@media (prefers-reduced-motion: reduce) { #cam, .node, .node rect, .edge path, .edge text { transition: none; } }
+.section { padding-block: 36px 14px; display: grid; gap: 6px; }
+.sites { display: grid; gap: 10px; }
+.siterow { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 4px; }
+.siterow h3 { font-size: 1rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.siterow p { color: var(--muted); font-size: 0.94rem; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<div class="scrolly">
-  <div class="stage">
-    <div class="bar gutter">
-      <h1>Job hunt workflow</h1>
-      <span class="chip all" id="where">Overview</span>
-      <span class="count" id="count">1 / 16</span>
-    </div>
-    <div class="canvas">
-      <svg id="svg" role="img" aria-label="Flow diagram of the job hunt automation">
-        <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="#8a93a6"/>
-          </marker>
-          <marker id="arrow-now" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="#4f78e8"/>
-          </marker>
-        </defs>
-        <g id="cam"><g id="edges"></g><g id="nodes"></g></g>
-      </svg>
-    </div>
-    <div class="caption gutter">
-      <div class="caption-inner">
-        <span class="hint" id="hint">Scroll down</span>
-        <h2 id="cap-title">The whole flow</h2>
-        <p id="cap-text">Every step from a new job to an application. Scroll and the map walks you through it.</p>
-      </div>
-    </div>
+<div class="top">
+  <div class="top-inner">
+    <b>Job hunt workflow</b>
+    <span class="tag mac" id="where">Your Mac</span>
+    <span class="count" id="count">Step 1 of 10</span>
   </div>
-  <div class="triggers" id="triggers"></div>
 </div>
 
-<div class="gutter">
-  <div class="legend">
-    <span class="chip cloud">Google cloud: runs with laptop off</span>
-    <span class="chip phone">Telegram on your phone</span>
-    <span class="chip you">You</span>
-    <span class="chip mac">Your Mac, when awake</span>
-    <span class="chip all">Dashed border: a decision</span>
+<main>
+  <header class="intro">
+    <span class="eyebrow">Auto-apply, review in the Sheet</span>
+    <h1>How one run works</h1>
+    <p>Every hour the script goes through Instahyre, Cutshort, Wellfound and LinkedIn, applies to fresh jobs that fit, and writes each one to your Sheet. You don't approve anything. You review the Sheet and tell this chat what to change.</p>
+    <div class="legend">
+      <span class="tag mac">Your Mac</span>
+      <span class="tag site">On the job site</span>
+      <span class="tag sheet">Google Sheet</span>
+      <span class="tag you">You</span>
+    </div>
+  </header>
+
+  <div class="flow" id="flow">
+
+    <div class="node" data-where="mac"><div class="rail"><span class="dot">1</span></div>
+      <div class="card"><span class="tag mac">Your Mac</span><h3>A run starts every hour</h3>
+        <p>A timer on your Mac starts the script. It needs your Mac on, because your logins live only there.</p>
+        <div class="outs"><div class="out"><span class="tag stop">Mac off</span><span>That run is missed. The next run catches up on jobs from the last 24 hours.</span></div></div>
+      </div></div>
+
+    <div class="node" data-where="site"><div class="rail"><span class="dot">2</span></div>
+      <div class="card decision"><span class="tag site">On the job site</span><h3>Open the site, already logged in</h3>
+        <p>It uses its own Chrome window where you logged in once. Sites go in this order: Instahyre, Cutshort, Wellfound, LinkedIn.</p>
+        <div class="outs"><div class="out"><span class="tag you">Logged out or CAPTCHA</span><span>Stops on this site and adds a "Needs you" row. Moves to the next site.</span></div></div>
+      </div></div>
+
+    <div class="node" data-where="site"><div class="rail"><span class="dot">3</span></div>
+      <div class="card"><span class="tag site">On the job site</span><h3>Search for fresh jobs</h3>
+        <p>Your titles and cities, posted in the last 24 hours, newest first. Hiring posts on LinkedIn too.</p>
+      </div></div>
+
+    <div class="node" data-where="sheet"><div class="rail"><span class="dot">4</span></div>
+      <div class="card decision"><span class="tag sheet">Checks the Sheet</span><h3>Already applied?</h3>
+        <div class="outs"><div class="out"><span class="tag stop">Yes</span><span>Skipped. You never apply to the same job twice.</span></div></div>
+      </div></div>
+
+    <div class="node" data-where="site"><div class="rail"><span class="dot">5</span></div>
+      <div class="card decision"><span class="tag site">Reads the job</span><h3>Does it fit you?</h3>
+        <p>Right title and level (0 to 2 years), your cities or remote, no words like senior or lead, not on your avoid list.</p>
+        <div class="outs"><div class="out"><span class="tag stop">No</span><span>Skipped, not logged.</span></div></div>
+      </div></div>
+
+    <div class="node" data-where="site"><div class="rail"><span class="dot">6</span></div>
+      <div class="card decision"><span class="tag site">Safety cap</span><h3>Daily limit reached for this site?</h3>
+        <p>A cap per site per day keeps it looking like a person and protects your accounts.</p>
+        <div class="outs"><div class="out"><span class="tag stop">Yes</span><span>Stops on this site until tomorrow.</span></div></div>
+      </div></div>
+
+    <div class="node" data-where="site"><div class="rail"><span class="dot">7</span></div>
+      <div class="card decision"><span class="tag site">On the job site</span><h3>Apply</h3>
+        <p>Fills in your saved answers, the cover note, your resume and portfolio link, then submits.</p>
+        <div class="outs">
+          <div class="out"><span class="tag you">Question it can't answer</span><span>Doesn't guess or submit. Adds a "Needs you" row.</span></div>
+          <div class="out"><span class="tag you">LinkedIn hiring post</span><span>No apply button, so it drafts a message and adds a "Needs you" row. You send it.</span></div>
+        </div>
+      </div></div>
+
+    <div class="node" data-where="sheet"><div class="rail"><span class="dot">8</span></div>
+      <div class="card"><span class="tag sheet">Google Sheet</span><h3>Writes a row on the site's tab</h3>
+        <p>Company, role, job link, when it was posted, when it applied, minutes after posting, applicants, note used. Status: Applied.</p>
+        <span class="loop">Back to step 4 for the next job. After the last site, the run ends.</span>
+      </div></div>
+
+    <div class="node" data-where="you"><div class="rail"><span class="dot">9</span></div>
+      <div class="card"><span class="tag you">You, when you like</span><h3>Review the Sheet</h3>
+        <p>See where it applied. Do the "Needs you" rows. Update the status when a company replies.</p>
+      </div></div>
+
+    <div class="node" data-where="you"><div class="rail"><span class="dot">10</span></div>
+      <div class="card"><span class="tag you">You, in this chat</span><h3>Ask for changes</h3>
+        <p>"Stop applying to X", "add this title", "change the note". I update the script and the next run uses it.</p>
+      </div></div>
   </div>
-</div>
+
+  <div class="section"><span class="eyebrow">Step 7, per site</span><h2>What "apply" means on each site</h2></div>
+  <div class="sites">
+    <div class="siterow"><h3>Instahyre</h3><p>Clicks Interested on the opportunity.</p></div>
+    <div class="siterow"><h3>Cutshort</h3><p>Clicks Apply and adds your note.</p></div>
+    <div class="siterow"><h3>Wellfound</h3><p>Fills the short apply form with your note.</p></div>
+    <div class="siterow"><h3>LinkedIn <span class="tag risk">Ban risk</span></h3><p>Easy Apply only. Jobs that send you to a company website get a "Needs you" row with the link. LinkedIn bans accounts that auto-apply, even slowly. Your call before I build this one.</p></div>
+  </div>
+</main>
 
 <script>
 (() => {
-  const W = 160, H = 60;
-  const L = 95, C = 280, R = 465;
-  // id: [x, y, lane, label, decision?]
-  const N = {
-    timer: [C, 60, "cloud", "Every hour"],
-    li: [L, 190, "cloud", "LinkedIn finder"],
-    em: [C, 190, "cloud", "Email finder"],
-    mf: [R, 190, "mac", "Mac finder"],
-    filt: [C, 320, "cloud", "Fits your\nfilters?", 1],
-    drop: [R, 320, "stop", "Dropped"],
-    dup: [C, 440, "cloud", "Already in\nthe Sheet?", 1],
-    seen: [R, 440, "stop", "Ignored"],
-    sheet: [C, 560, "cloud", "Sheet:\nnew row"],
-    quiet: [C, 680, "cloud", "Quiet hours?", 1],
-    hold: [R, 680, "stop", "Wait till 8am"],
-    site: [C, 800, "cloud", "Which site?", 1],
-    pa: [L, 930, "phone", "Ping:\nLinkedIn job"],
-    pb: [R, 930, "phone", "Ping:\nApprove / Skip"],
-    ua: [L, 1050, "you", "Apply?", 1],
-    skip: [C, 1050, "stop", "Skipped"],
-    ub: [R, 1050, "you", "Approve?", 1],
-    ea: [L, 1170, "you", "Easy Apply\nyourself"],
-    queue: [R, 1170, "cloud", "Apply queue"],
-    wait: [C, 1290, "phone", "Ping:\nopen laptop"],
-    awake: [R, 1290, "mac", "Mac awake?", 1],
-    apply: [R, 1410, "mac", "Mac fills\nand submits"],
-    needs: [C, 1530, "phone", "Ping:\nNeeds you"],
-    prob: [R, 1530, "mac", "Problem?", 1],
-    fix: [C, 1650, "you", "Fix it\nby hand"],
-    ok: [R, 1650, "phone", "Ping: Applied"],
-    done: [C, 1770, "cloud", "Sheet:\nApplied at"],
-    t9: [L, 1910, "cloud", "Every day\n9pm"],
-    t8: [R, 1910, "cloud", "Every\nmorning"],
-    sum: [L, 2030, "phone", "Ping:\ndaily summary"],
-    fu: [R, 2030, "cloud", "Follow-up\ndue?", 1],
-    fp: [R, 2150, "phone", "Ping:\ndraft ready"],
-    send: [R, 2270, "you", "You send it"],
-  };
-
-  // Steps: focus nodes, caption, lane chip.
-  const ALL = Object.keys(N);
-  const S = [
-    { f: ALL, w: "all", t: "The whole flow", p: "Every step from a new job to an application. Scroll and the map walks you through it." },
-    { f: ["timer"], w: "cloud", t: "Every hour", p: "Google wakes the script once an hour, day and night. Your laptop can be closed." },
-    { f: ["li", "em", "mf"], w: "cloud", t: "Three finders look for new jobs", p: "LinkedIn: public job search, past hour, no login, so your account stays safe. Email: Instahyre, Cutshort and Wellfound alerts in Gmail. Mac: a logged-in check of those three, if awake." },
-    { f: ["filt", "drop"], w: "cloud", t: "Does it fit you?", p: "Role, level, city or remote, posted in the last 24 hours, no words like senior or lead. If not, it's dropped." },
-    { f: ["dup", "seen"], w: "cloud", t: "Seen it before?", p: "If the job is already in your Sheet, it's ignored. You never get the same job twice." },
-    { f: ["sheet"], w: "cloud", t: "Logged in the Sheet", p: "A new row on that site's tab: company, role, link, posted time, applicants. Status: New." },
-    { f: ["quiet", "hold"], w: "cloud", t: "Quiet hours?", p: "Between 11pm and 8am the ping waits until morning. The job is already logged." },
-    { f: ["site"], w: "cloud", t: "Which site?", p: "LinkedIn goes left: you apply yourself. Instahyre, Cutshort and Wellfound go right: your Mac applies after you approve." },
-    { f: ["pa", "ua", "skip"], w: "phone", t: "LinkedIn: you get a ping", p: "Telegram shows the role, company, how fresh it is, and a link. Apply, or tap Skip." },
-    { f: ["ea", "done"], w: "you", t: "You apply, the Sheet updates", p: "Open the link, Easy Apply on LinkedIn, tap I applied. Applied at and Minutes to apply fill in." },
-    { f: ["pb", "ub", "skip"], w: "phone", t: "Other sites: approve or skip", p: "Telegram shows the job and the note it will send. Approve puts it in the queue. Skip marks it Skipped." },
-    { f: ["queue", "awake", "wait"], w: "mac", t: "Waiting for your Mac", p: "Applying needs your login, which lives only on your Mac. If it's asleep for over 3 hours, Telegram asks you to open it." },
-    { f: ["apply", "prob"], w: "mac", t: "Your Mac applies", p: "In its own Chrome profile it fills your answers, note and resume, then submits." },
-    { f: ["ok", "needs", "fix", "done"], w: "phone", t: "Done, or needs you", p: "All good: Telegram says Applied and the Sheet updates. Logged out, a CAPTCHA or an odd question: Telegram says Needs you and that site pauses." },
-    { f: ["t9", "sum", "t8", "fu", "fp", "send"], w: "phone", t: "Every day", p: "9pm: a summary of found, applied, skipped and waiting. Mornings: if a follow-up is due, you get a drafted message to send yourself." },
-    { f: ALL, w: "phone", t: "Where Telegram comes in", p: "The yellow boxes. It's the only way the system can reach you instantly and get a one-tap answer back.", only: "phone" },
-  ];
-
-  // Edges: from, to, label, step it lights up on, optional custom path.
-  const E = [
-    ["timer", "li", "", 2], ["timer", "em", "", 2], ["mf", "filt", "if awake", 3],
-    ["li", "filt", "", 3], ["em", "filt", "", 3],
-    ["filt", "drop", "no", 3], ["filt", "dup", "yes", 4],
-    ["dup", "seen", "yes", 4], ["dup", "sheet", "no", 5],
-    ["sheet", "quiet", "", 6], ["quiet", "hold", "yes", 6], ["quiet", "site", "no", 7],
-    ["hold", "site", "8am", 7, `M${R},710 L${R},800 L${C + W / 2},800`],
-    ["site", "pa", "LinkedIn", 8, `M${C - W / 2},800 L${L},800 L${L},900`],
-    ["site", "pb", "others", 10, `M${C + W / 2},800 L${R},800 L${R},900`],
-    ["pa", "ua", "", 8], ["ua", "skip", "no", 8], ["ua", "ea", "yes", 9],
-    ["ea", "done", "I applied", 9, `M${L},1200 L${L},1770 L${C - W / 2},1770`],
-    ["pb", "ub", "", 10], ["ub", "skip", "skip", 10], ["ub", "queue", "approve", 11],
-    ["queue", "awake", "", 11], ["awake", "wait", "no, 3h+", 11], ["awake", "apply", "yes", 12],
-    ["apply", "prob", "", 12], ["prob", "ok", "no", 13], ["prob", "needs", "yes", 13],
-    ["needs", "fix", "", 13], ["fix", "done", "", 13],
-    ["ok", "done", "", 13, `M${R},1680 L${R},1770 L${C + W / 2},1770`],
-    ["t9", "sum", "", 14], ["t8", "fu", "", 14], ["fu", "fp", "yes", 14], ["fp", "send", "", 14],
-  ];
-
-  const NS = "http://www.w3.org/2000/svg";
-  const el = (tag, attrs, parent) => {
-    const e = document.createElementNS(NS, tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    if (parent) parent.appendChild(e);
-    return e;
-  };
-
-  // Node first-step map: a node is "seen" from the first step that focuses it.
-  const firstStep = {};
-  S.forEach((s, i) => { if (s.f !== ALL) s.f.forEach(id => { if (!(id in firstStep)) firstStep[id] = i; }); });
-
-  const nodeEls = {};
-  const nodesG = document.getElementById("nodes");
-  for (const id in N) {
-    const [x, y, lane, label, dec] = N[id];
-    const g = el("g", { class: `node ${lane}${dec ? " decision" : ""}` }, nodesG);
-    el("rect", { x: x - W / 2, y: y - H / 2, width: W, height: H, rx: dec ? 6 : 14 }, g);
-    const lines = label.split("\n");
-    lines.forEach((ln, i) => {
-      const t = el("text", { x, y: y + (i - (lines.length - 1) / 2) * 19 }, g);
-      t.textContent = ln;
-    });
-    nodeEls[id] = g;
-  }
-
-  const edgesG = document.getElementById("edges");
-  const edgeEls = E.map(([a, b, label, step, d]) => {
-    const [x1, y1] = N[a], [x2, y2] = N[b];
-    let path, lx, ly;
-    if (d) {
-      path = d;
-      const pts = d.match(/-?\d+(\.\d+)?/g).map(Number);
-      lx = (pts[2] + pts[4]) / 2; ly = (pts[3] + pts[5]) / 2;
-    } else if (y1 === y2) {
-      const dir = x2 > x1 ? 1 : -1;
-      const sx = x1 + dir * W / 2, ex = x2 - dir * W / 2;
-      path = `M${sx},${y1} L${ex},${y2}`;
-      lx = (sx + ex) / 2; ly = y1 - 12;
-    } else {
-      const sy = y1 + H / 2, ey = y2 - H / 2, my = (sy + ey) / 2;
-      path = `M${x1},${sy} C${x1},${my} ${x2},${my} ${x2},${ey}`;
-      lx = (x1 + x2) / 2 + (x1 === x2 ? 0 : 0); ly = my;
-      if (x1 === x2) lx = x1 + 34;
-    }
-    const g = el("g", { class: "edge" }, edgesG);
-    const p = el("path", { d: path, "marker-end": "url(#arrow)" }, g);
-    if (label) { const t = el("text", { x: lx, y: ly }, g); t.textContent = label; }
-    return { g, p, step };
-  });
-
-  const cam = document.getElementById("cam");
-  const svg = document.getElementById("svg");
+  const nodes = [...document.querySelectorAll(".node")];
   const where = document.getElementById("where");
-  const names = { all: "Overview", cloud: "Google cloud", phone: "Telegram", you: "You", mac: "Your Mac" };
-
-  let current = -1;
-  const show = i => {
-    if (i === current) return;
-    current = i;
-    const s = S[i];
-    const last = i === S.length - 1;
-
-    for (const id in nodeEls) {
-      const g = nodeEls[id];
-      const fs = firstStep[id];
-      const seen = i === 0 || last || fs < i;
-      const now = s.f !== ALL && s.f.includes(id);
-      g.classList.toggle("seen", seen && !now);
-      g.classList.toggle("now", now || (s.only && N[id][2] === s.only));
-    }
-    edgeEls.forEach(e => {
-      const now = e.step === i;
-      const seen = i === 0 || last || e.step < i;
-      e.g.classList.toggle("now", now);
-      e.g.classList.toggle("seen", seen && !now);
-      e.p.setAttribute("marker-end", now ? "url(#arrow-now)" : "url(#arrow)");
-    });
-
-    // Camera: fit the focus nodes, but never so far out that text gets tiny on a phone.
-    const box = s.f.reduce((b, id) => {
-      const [x, y] = N[id];
-      return [Math.min(b[0], x - W / 2), Math.min(b[1], y - H / 2), Math.max(b[2], x + W / 2), Math.max(b[3], y + H / 2)];
-    }, [Infinity, Infinity, -Infinity, -Infinity]);
-    const pad = 36;
-    const r = svg.getBoundingClientRect();
-    const bw = box[2] - box[0] + pad * 2, bh = box[3] - box[1] + pad * 2;
-    const scale = Math.min(r.width / bw, r.height / bh, 1.5);
-    const cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2;
-    cam.style.transform = `translate(${r.width / 2 - cx * scale}px, ${r.height / 2 - cy * scale}px) scale(${scale})`;
-
-    where.className = "chip " + s.w;
-    where.textContent = names[s.w];
-    document.getElementById("count").textContent = `${i + 1} / ${S.length}`;
-    document.getElementById("cap-title").textContent = s.t;
-    document.getElementById("cap-text").textContent = s.p;
-    document.getElementById("hint").textContent = i === 0 ? "Scroll down" : last ? "That's the whole flow" : `Step ${i}`;
+  const count = document.getElementById("count");
+  const names = { mac: "Your Mac", site: "On the job site", sheet: "Google Sheet", you: "You" };
+  const set = n => {
+    nodes.forEach(x => x.classList.toggle("on", x === n));
+    where.className = "tag " + n.dataset.where;
+    where.textContent = names[n.dataset.where];
+    count.textContent = `Step ${nodes.indexOf(n) + 1} of ${nodes.length}`;
   };
-
-  const triggers = document.getElementById("triggers");
-  S.forEach(() => triggers.appendChild(Object.assign(document.createElement("div"), { className: "trigger" })));
-
-  const onScroll = () => {
-    const top = triggers.getBoundingClientRect().top;
-    const h = triggers.firstChild.getBoundingClientRect().height;
-    const i = Math.max(0, Math.min(S.length - 1, Math.floor((-top + innerHeight * 0.35) / h)));
-    show(i);
-  };
-  addEventListener("scroll", onScroll, { passive: true });
-  addEventListener("resize", () => { const c = current; current = -1; show(c < 0 ? 0 : c); });
-  show(0);
-  onScroll();
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && set(e.target)),
+    { rootMargin: "-40% 0px -55% 0px" });
+  nodes.forEach(n => io.observe(n));
+  set(nodes[0]);
 })();
 </script>

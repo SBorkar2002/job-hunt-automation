@@ -35,7 +35,7 @@ Be one of the first applicants on every good-fit role. Recruiters often start fr
 | Recruiter / poster | Name and profile link, if known |
 | Resume version | |
 | Note used | Cover note version |
-| Action | Applied, Alerted, Skipped |
+| Action | Applied, Needs you, Skipped |
 | Status | Applied, Viewed, Replied, Interview, Offer, Rejected, No reply |
 | Response at | When she heard back |
 | Follow-up on | Date to nudge |
@@ -59,57 +59,49 @@ Private answers (pay, phone, notice) are in `private/answers.local.md`, which is
 - Start: Dec 2026. Flag "immediate joiner" roles, don't skip them.
 - Prefer: AI products, fintech, consumer apps, design-led startups.
 - Avoid: agencies, IT services, unpaid or contract-only roles, betting apps.
-- Dream companies: list pending from Sejal. They ping instantly and skip filters.
+- Dream companies: list pending from Sejal. They go first and skip the level filter.
 
 **Sites and actions**
-- Sources: LinkedIn (alerts only), Instahyre, Wellfound, Cutshort, career pages. Later: Naukri, Hirist, YC Work at a Startup.
-- Allowed: one-click and short forms, filled for her approval. Recruiter messages and cold emails are drafted only; she sends them.
-- LinkedIn: route A. No script logs in or clicks on LinkedIn.
+- Sources: LinkedIn, Instahyre, Wellfound, Cutshort, career pages. Later: Naukri, Hirist, YC Work at a Startup.
+- Allowed: one-click and short-form applies, done automatically. Recruiter messages and cold emails are drafted only; she sends them.
 
 **Freshness**
-- Posted within 24 hours. Under 3 hours old means an urgent ping.
+- Posted within 24 hours, newest applied first.
 - Under 100 applicants preferred.
 - Post keywords: "hiring" plus "product designer", "UX designer", "design role".
 - Exclude: senior, lead, principal, manager, 5+ years, intern.
 
 **Resume, note, portfolio**
 - Resume: the PDF on the site (sejalborkar.vercel.app/resume), one version for now.
-- Cover note: one 3-line template filled with company, role and one line from the job post. No paid AI. She edits before anything goes out.
+- Cover note: one 3-line template filled with company, role and one line from the job post. No paid AI. She approves the template once; it is then used as is.
 - Portfolio: sejalborkar.vercel.app with ?ref=<site> per source (needs Vercel Analytics on).
 - Email for applications: personal Gmail, not Epifi.
 
-**Control, alerts, running**
-- She approves every application. Loosen per site after a week if it goes well.
-- Alerts: Telegram bot (free) with Approve and Skip buttons, plus a 9pm email summary. Quiet 11pm to 8am IST.
-- Watchers run in the cloud on Google Apps Script (free, laptop can be off).
-- Applying: she taps on her phone, then her Mac applies when it's awake, using its own Chrome profile she logs into herself. No saved logins online.
+**Control, alerts, running (changed 20 Oct 2026)**
+- **Auto-apply, no approval step.** The script applies on its own using these answers and logs every application in the Sheet. Sejal reviews the Sheet and asks this chat for script changes. This is her approved flow.
+- **No Telegram.** No pings. Anything that needs her shows up in the Sheet as Status "Needs you" with the reason.
+- Safety caps: a daily limit per site, newest jobs first, filters stay strict. A form question it has no answer for gets skipped and marked "Needs you", never guessed.
+- Applying needs her logins, so it runs on her Mac in its own Chrome profile she logs into once. When the Mac is off or asleep it can't apply; it catches up on the next run. No saved logins online.
+- LinkedIn: she wants auto Easy Apply too. Pending her final yes after the ban-risk warning (20 Oct). Hiring posts: message drafted in the Sheet; she sends it (no auto DMs or emails).
 - Budget: free only. Ask before anything paid.
 - Log: Google Sheet on her personal account, one tab per source.
 - Order: shared setup, then sources one at a time.
 
 ## What exists
 
-- `apps-script/Tracker.gs`: shared setup. Creates the Sheet and its tabs (columns, status dropdowns, auto "Minutes to apply"), logs jobs without duplicates (`addJob`), and sends Telegram pings (`ping`) that stay muted in quiet hours.
+- `apps-script/Tracker.gs`: shared setup. Creates the Sheet and its tabs (columns, status dropdowns, auto "Minutes to apply"), and logs jobs without duplicates (`addJob`). Its Telegram code is no longer used.
 - `private/answers.local.md`: private answers template (git ignored).
-- `docs/workflow.html`: the full workflow diagram for LinkedIn, Instahyre, Cutshort and Wellfound, including every case where Telegram is used. Live page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
+- `docs/workflow.html`: the auto-apply workflow for LinkedIn, Instahyre, Cutshort and Wellfound. Live page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
 
-## Setup steps for Sejal (about 10 minutes, once)
+## Setup steps for Sejal (about 5 minutes, once)
 
-1. **Telegram bot.** In Telegram, open @BotFather, send `/newbot`, pick a name. Copy the token it gives you. Don't paste the token in chat or in any file.
-2. **Apps Script.** Signed in to your *personal* Google account, go to script.google.com and click New project. Name it "Job hunt bot". Delete the sample code and paste all of `apps-script/Tracker.gs`.
-3. **Token.** In Project Settings (gear icon), under Script Properties, add `TELEGRAM_TOKEN` with your bot token as the value.
-4. **Sheet.** Back in Editor, pick `setupTracker` in the function menu and click Run. Allow the permissions Google asks for (it's your own script). The log shows your new Sheet's link.
-5. **Link phone.** Send "hi" to your bot in Telegram. Then run `linkTelegram`. You should get "Job hunt bot is linked".
-6. **Test.** Run `testPing`. A test alert should reach your phone.
+1. **Apps Script.** Signed in to your *personal* Google account, go to script.google.com and click New project. Name it "Job hunt bot". Delete the sample code and paste all of `apps-script/Tracker.gs`.
+2. **Sheet.** Pick `setupTracker` in the function menu and click Run. Allow the permissions Google asks for (it's your own script). The log shows your new Sheet's link.
+3. **Logins (later, per site).** When a site's script is ready, it opens its own Chrome window once. You log in there yourself. It remembers that login on your Mac only.
 
 ## Status
 
-- Done: requirements and answers recorded; git set up; shared setup script written (passes a syntax check, not yet run in Google).
-- Next: Sejal runs the setup steps above. Then the first source.
-- Left: every source script.
-
-## Open decision: first source
-
-LinkedIn job alert emails come daily or weekly at most, not instantly ([guide](https://www.viralbrain.ai/blog/linkedin-job-alerts), [Cooper](https://cooper.edu/continuing-education/setting-job-alerts-linkedin)). So an email watcher would be up to a day late, which defeats "apply first". Recommended instead:
-- **Start with career pages** (Greenhouse, Lever, Ashby public feeds). Roles show there first, often before LinkedIn, and checking them every 10 minutes is allowed and free. Needs the dream company list.
-- **LinkedIn speed:** turn on LinkedIn app push notifications for job alerts (near instant, from LinkedIn itself). You apply from the phone; a later script only logs it.
+- Done: requirements and answers recorded; git set up; Sheet setup script written (syntax checked, not yet run in Google); workflow page.
+- Decided 20 Oct: auto-apply with Sheet review, no Telegram.
+- Next: Sejal's final yes on LinkedIn auto Easy Apply, then the first site script.
+- Left: every site script; drop the unused Telegram code from `Tracker.gs`.
