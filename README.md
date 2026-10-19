@@ -63,7 +63,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - Titles: Product Designer, UX Designer, UI/UX Designer, AI / GenAI Product Designer, Interaction Designer.
 - Level: entry and Associate (0 to 2 years). Skip Senior, Lead, Principal, Manager.
 - Locations: Bengaluru, Mumbai, remote (India).
-- Start: Dec 2026. Flag "immediate joiner" roles, don't skip them.
+- Start date: in private answers. Flag "immediate joiner" roles, don't skip them.
 - Prefer: AI products, fintech, consumer apps, design-led startups.
 - Avoid: agencies, IT services, unpaid or contract-only roles, betting apps.
 - Dream companies: list pending from Sejal. They go first and skip the level filter.
