@@ -33,7 +33,7 @@ const URLS = {
 const TEXT = {
   apply: /^\s*(apply|apply now|interested|i'?m interested)\s*$/i,
   submit: /^\s*(submit|apply|send|send application|confirm)\s*$/i,
-  done: /(applied|application (sent|submitted)|you have applied)/i,
+  done: /application (sent|submitted)/i,
   captcha: /(verify you are human|are you a robot|captcha|unusual traffic)/i,
 };
 
@@ -158,7 +158,8 @@ async function applyTo(page, job) {
     if (!fit.ok) return { skip: fit.reason };
   }
 
-  const apply = page.getByRole('button', { name: TEXT.apply }).or(page.getByRole('link', { name: TEXT.apply })).first();
+  // The visible "Apply now" is a button inside a link that catches the mouse, so we trigger the button itself.
+  const apply = page.getByRole('button', { name: TEXT.apply }).first();
   if (!(await apply.count())) return { needs: 'No Apply or Interested button found' };
 
   // A link that leaves Instahyre means the company's own site.
@@ -170,7 +171,7 @@ async function applyTo(page, job) {
   if (DRY) return { dry: true };
 
   const popup = page.context().waitForEvent('page', { timeout: 4000 }).catch(() => null);
-  await apply.click();
+  await apply.dispatchEvent('click');
   const newTab = await popup;
   if (newTab) {
     const url = newTab.url();
@@ -187,8 +188,10 @@ async function applyTo(page, job) {
   const submit = page.getByRole('dialog').getByRole('button', { name: TEXT.submit }).first();
   if (await submit.count()) { await submit.click(); await sleep(2000); }
 
+  // Proven 20 Oct: Instahyre shows "Application sent!" and the Apply now button disappears.
   const text = await page.locator('body').innerText();
-  if (!TEXT.done.test(text)) return { needs: 'Clicked apply but could not confirm it went through. Please check' };
+  const stillThere = await page.getByRole('button', { name: TEXT.apply }).count();
+  if (!TEXT.done.test(text) && stillThere) return { needs: 'Clicked apply but could not confirm it went through. Please check' };
   return { applied: true };
 }
 

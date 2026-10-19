@@ -123,8 +123,8 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - Decided 20 Oct: auto-apply with Sheet review, no Telegram. LinkedIn skipped. Instahyre first, one script per site.
 - Built 20 Oct (branch `feat/instahyre`): Sheet endpoint, shared config and filters, cover note, Instahyre login helper and applier.
 - Proven 20 Oct: filters and note on sample jobs; Sheet connection (read check, wrong secret refused); login survives a Chrome restart; inspect dry run read all 11 recommended jobs from Instahyre's feed, skipped 10 with reasons (7 title, 3 location), found 1 fit (Foresight Labs, Product Designer UI/UX) and its "Apply now" button.
-- Not proven yet: what happens after clicking "Apply now" (any form). Needs one live apply.
-- Next: `npm run instahyre:live -- --limit 1` with her OK, then show the Sheet row. Then the hourly timer on the Mac.
+- **First live application, 20 Oct (her OK):** Foresight Labs, Product Designer UI/UX. Instahyre shows "Application sent!", the Apply button is gone, and the row is in the Instahyre tab. No extra form appeared for this job. Fix made on the way: "Apply now" is a button inside a link, so the bot triggers the button itself.
+- Next: the hourly timer on the Mac (launchd), then a week of live runs at 10 a day while she reviews the Sheet.
 - Idea: Instahyre's recommended feed is mostly visual and graphic roles. Its job search and "Similar jobs" show many more Product Designer roles in Bengaluru. Next step after the first live apply: also read search results for her titles.
 - Later: fill company-site forms (Greenhouse, Lever, Ashby) for jobs that leave Instahyre; Cutshort; Wellfound.
 
