@@ -91,7 +91,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 
 ## What exists
 
-- `apps-script/Tracker.gs`: shared setup. Creates the Sheet and its tabs (columns, status dropdowns, auto "Minutes to apply"), and logs jobs without duplicates (`addJob`). Its Telegram code is no longer used.
+- `apps-script/Tracker.gs`: shared setup. Creates the Sheet and its tabs (columns, status dropdowns, auto "Minutes to apply"), and logs jobs without duplicates (`addJob`).
 - `apps-script/Tracker.gs` also has `doPost`: the endpoint the Mac scripts use to check for and log rows, guarded by a secret.
 - `shared/config.json`: titles, excluded words, cities, caps, cover note (draft, needs her OK). Edit this to change filters.
 - `shared/filters.mjs`: decides if a job fits and gives the reason. `shared/sheet.mjs`: logs rows (prints only in dry run).

@@ -1,9 +1,9 @@
 /**
  * Job hunt tracker: shared setup.
  * Runs inside Google Apps Script on Sejal's personal Google account,
- * so it keeps working when her laptop is off.
+ * so the Sheet side works even when her laptop is off.
  *
- * Secrets (Telegram token, chat id, sheet id) live in Script Properties,
+ * Secrets (sheet id, SHEET_SECRET) live in Script Properties,
  * never in this file.
  */
 
@@ -19,10 +19,6 @@ const COLUMNS = [
 
 const STATUSES = ['Applied', 'Needs you', 'Viewed', 'Replied', 'Interview', 'Offer', 'Rejected', 'No reply', 'Skipped'];
 const ACTIONS = ['Applied', 'Needs you', 'Skipped'];
-
-// Pings are muted between these hours (IST). Rows are still logged.
-const QUIET_FROM = 23;
-const QUIET_TO = 8;
 
 const props = () => PropertiesService.getScriptProperties();
 
@@ -106,44 +102,6 @@ function addJob(tab, job) {
   sh.getRange(r, COLUMNS.indexOf('Minutes to apply') + 1)
     .setFormulaR1C1('=IF(OR(R[0]C3="",R[0]C2=""),"",ROUND((R[0]C3-R[0]C2)*1440))');
   return true;
-}
-
-/* ---------- Telegram ---------- */
-
-/**
- * Step 2. After setting TELEGRAM_TOKEN in Script Properties and sending
- * any message to your bot, run this once to save your chat id.
- */
-function linkTelegram() {
-  const token = props().getProperty('TELEGRAM_TOKEN');
-  if (!token) throw new Error('Add TELEGRAM_TOKEN in Project Settings > Script Properties.');
-  const res = JSON.parse(UrlFetchApp.fetch(`https://api.telegram.org/bot${token}/getUpdates`).getContentText());
-  const msg = (res.result || []).map(u => u.message).filter(Boolean).pop();
-  if (!msg) throw new Error('Send any message to your bot in Telegram, then run this again.');
-  props().setProperty('TELEGRAM_CHAT_ID', String(msg.chat.id));
-  ping('Job hunt bot is linked. Alerts will arrive here.', { force: true });
-}
-
-/** Step 3. Sends a test alert. */
-function testPing() {
-  ping('Test alert: Product Designer at Example Co\nhttps://sejalborkar.vercel.app', { force: true });
-}
-
-/** Sends a phone alert. Muted in quiet hours unless force is set. */
-function ping(text, opts) {
-  opts = opts || {};
-  const hour = Number(Utilities.formatDate(new Date(), 'Asia/Kolkata', 'H'));
-  const quiet = hour >= QUIET_FROM || hour < QUIET_TO;
-  if (quiet && !opts.force) return;
-
-  const token = props().getProperty('TELEGRAM_TOKEN');
-  const chat = props().getProperty('TELEGRAM_CHAT_ID');
-  if (!token || !chat) return;
-  UrlFetchApp.fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'post',
-    payload: { chat_id: chat, text: text, disable_web_page_preview: 'true' },
-    muteHttpExceptions: true,
-  });
 }
 
 /* ---------- Endpoint for the site scripts on the Mac ---------- */
