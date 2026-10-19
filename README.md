@@ -8,6 +8,13 @@ This file is the single tracker: requirements, answers, what exists, how to run 
 
 Be one of the first applicants on every good-fit role. Recruiters often start from the top of the list, so speed after posting is the main lever. Fit still matters, so filters stay strict.
 
+## Links
+
+- Sheet (Job hunt tracker): https://docs.google.com/spreadsheets/d/1tj34leK-HVtZBhOoofL1ZZaOrc-_eXlE5gfaafy1E68/edit
+- Apps Script project: TODO (paste from the editor's address bar)
+- Code (private repo): https://github.com/SBorkar2002/job-hunt-automation
+- Workflow page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
+
 ## Requirements (from Sejal, 19 Oct 2026)
 
 1. **Log everything in one Google Sheet.**
