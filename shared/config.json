@@ -1,0 +1,20 @@
+{
+  "titles": ["product designer", "ux designer", "ui/ux designer", "ui ux designer", "ux/ui designer", "interaction designer", "ai product designer", "genai product designer"],
+  "excludeWords": ["senior", "sr.", "lead", "principal", "manager", "head of", "director", "staff", "intern", "internship", "5+ years", "6+ years", "7+ years", "8+ years"],
+  "locations": ["bengaluru", "bangalore", "mumbai", "remote"],
+  "maxYearsRequired": 2,
+  "avoidCompanies": [],
+  "dreamCompanies": [],
+  "postedWithinHours": 24,
+  "portfolio": "https://sejalborkar.vercel.app",
+  "resumeUrl": "https://sejalborkar.vercel.app/resume",
+  "resumeVersion": "site-v1",
+  "note": {
+    "version": "note-v1-draft",
+    "approved": false,
+    "text": "Hi {company} team, I'm Sejal, a product designer at Epifi working on GenAI products. I'd love to bring that to the {role} role. My work is here: {portfolio}"
+  },
+  "sites": {
+    "instahyre": { "tab": "Instahyre", "dailyCap": 10, "minGapSeconds": 90, "ref": "instahyre" }
+  }
+}

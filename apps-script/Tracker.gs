@@ -145,3 +145,43 @@ function ping(text, opts) {
     muteHttpExceptions: true,
   });
 }
+
+/* ---------- Endpoint for the site scripts on the Mac ---------- */
+
+/**
+ * The Mac scripts post here to log rows. Deploy once as a web app
+ * (Deploy > New deployment > Web app, execute as Me, access Anyone).
+ * Requests must carry SHEET_SECRET from Script Properties, so nobody
+ * else can write to the Sheet.
+ *
+ * Body: { secret, action: 'has' | 'add', tab, job }
+ */
+function doPost(e) {
+  const out = obj => ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (!body.secret || body.secret !== props().getProperty('SHEET_SECRET')) return out({ ok: false, error: 'bad secret' });
+    if (!TABS.includes(body.tab) && !sheet_().getSheetByName(body.tab)) return out({ ok: false, error: 'unknown tab' });
+
+    if (body.action === 'has') return out({ ok: true, has: hasJob_(body.tab, body.job.jobLink) });
+    if (body.action === 'add') return out({ ok: true, added: addJob(body.tab, body.job) });
+    return out({ ok: false, error: 'unknown action' });
+  } catch (err) {
+    return out({ ok: false, error: String(err) });
+  }
+}
+
+function hasJob_(tab, link) {
+  const sh = sheet_().getSheetByName(tab);
+  const last = sh.getLastRow();
+  if (last < 2 || !link) return false;
+  return sh.getRange(2, COLUMNS.indexOf('Job link') + 1, last - 1).getValues().flat().includes(link);
+}
+
+/** Run once to create the secret the Mac scripts use. Copy it from the log into the local .env file. */
+function makeSecret() {
+  const s = Utilities.getUuid().replace(/-/g, '');
+  props().setProperty('SHEET_SECRET', s);
+  Logger.log('SHEET_SECRET=' + s);
+}

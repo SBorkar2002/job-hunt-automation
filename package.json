@@ -1,0 +1,12 @@
+{
+  "name": "job-hunt-automation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "instahyre:login": "node instahyre/login.mjs",
+    "check": "node --check shared/config.mjs && node --check shared/filters.mjs && node --check shared/sheet.mjs && node --check instahyre/login.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.48.2"
+  }
+}

@@ -50,7 +50,7 @@ Be one of the first applicants on every good-fit role. Recruiters often start fr
 
 ## Answers (Sejal said "ok" to all defaults, 19 Oct 2026)
 
-Private answers (pay, phone, notice) are in `private/answers.local.md`, which is never committed or uploaded.
+Private answers (pay, phone, notice) are in `private/answers.local.json`, which is never committed or uploaded.
 
 **Roles**
 - Titles: Product Designer, UX Designer, UI/UX Designer, AI / GenAI Product Designer, Interaction Designer.
@@ -82,7 +82,9 @@ Private answers (pay, phone, notice) are in `private/answers.local.md`, which is
 - **No Telegram.** No pings. Anything that needs her shows up in the Sheet as Status "Needs you" with the reason.
 - Safety caps: a daily limit per site, newest jobs first, filters stay strict. A form question it has no answer for gets skipped and marked "Needs you", never guessed.
 - Applying needs her logins, so it runs on her Mac in its own Chrome profile she logs into once. When the Mac is off or asleep it can't apply; it catches up on the next run. No saved logins online.
-- LinkedIn: she wants auto Easy Apply too. Pending her final yes after the ban-risk warning (20 Oct). Hiring posts: message drafted in the Sheet; she sends it (no auto DMs or emails).
+- LinkedIn: skipped for now (decided 20 Oct). Hiring posts later: message drafted in the Sheet; she sends it.
+- **Separate script per site**, one shared Sheet and one shared config. Order: Instahyre first, then Cutshort, Wellfound.
+- **"Apply" means the whole thing** (20 Oct): click Apply or Interested, and if the job sends her to another website, fill that form and submit it too. Questions with no saved answer: skip and mark "Needs you".
 - Budget: free only. Ask before anything paid.
 - Log: Google Sheet on her personal account, one tab per source.
 - Order: shared setup, then sources one at a time.
@@ -90,18 +92,34 @@ Private answers (pay, phone, notice) are in `private/answers.local.md`, which is
 ## What exists
 
 - `apps-script/Tracker.gs`: shared setup. Creates the Sheet and its tabs (columns, status dropdowns, auto "Minutes to apply"), and logs jobs without duplicates (`addJob`). Its Telegram code is no longer used.
-- `private/answers.local.md`: private answers template (git ignored).
+- `apps-script/Tracker.gs` also has `doPost`: the endpoint the Mac scripts use to check for and log rows, guarded by a secret.
+- `shared/config.json`: titles, excluded words, cities, caps, cover note (draft, needs her OK). Edit this to change filters.
+- `shared/filters.mjs`: decides if a job fits and gives the reason. `shared/sheet.mjs`: logs rows (prints only in dry run).
+- `instahyre/login.mjs` (`npm run instahyre:login`): opens Instahyre in the bot's own Chrome profile for her to log in once.
+- `private/answers.local.json`: private answers (git ignored). Blank until she fills it.
 - `docs/workflow.html`: the auto-apply workflow for LinkedIn, Instahyre, Cutshort and Wellfound. Live page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
 
-## Setup steps for Sejal (about 5 minutes, once)
+## Setup steps for Sejal (about 10 minutes, once)
 
 1. **Apps Script.** Signed in to your *personal* Google account, go to script.google.com and click New project. Name it "Job hunt bot". Delete the sample code and paste all of `apps-script/Tracker.gs`.
 2. **Sheet.** Pick `setupTracker` in the function menu and click Run. Allow the permissions Google asks for (it's your own script). The log shows your new Sheet's link.
-3. **Logins (later, per site).** When a site's script is ready, it opens its own Chrome window once. You log in there yourself. It remembers that login on your Mac only.
+3. **Secret.** Run `makeSecret`. Copy the `SHEET_SECRET=...` line from the log.
+4. **Web app.** Deploy > New deployment > type Web app. Execute as: Me. Who has access: Anyone. Copy the web app URL.
+5. **.env.** In this folder, copy `.env.example` to `.env` and paste the URL and secret. (The secret only lets scripts write to your Sheet. It is not your Google password.)
+6. **Private answers.** Fill `private/answers.local.json` (phone, pay, notice, start date, email).
+7. **Instahyre login.** Run `npm run instahyre:login`, log in in the window that opens, then close it.
 
 ## Status
 
 - Done: requirements and answers recorded; git set up; Sheet setup script written (syntax checked, not yet run in Google); workflow page.
-- Decided 20 Oct: auto-apply with Sheet review, no Telegram.
-- Next: Sejal's final yes on LinkedIn auto Easy Apply, then the first site script.
+- Decided 20 Oct: auto-apply with Sheet review, no Telegram. LinkedIn skipped. Instahyre first, one script per site.
+- Built 20 Oct (branch `feat/instahyre`): Sheet logging endpoint, shared config, cover note draft, Instahyre login helper.
+- **Waiting on Sejal:** (1) yes to automating Instahyre after the terms warning below, (2) OK on the cover note in `shared/config.json`, (3) log in once with `npm run instahyre:login`.
+- Next: Instahyre dry run (reads jobs, applies to nothing), then one real application with her OK.
 - Left: every site script; drop the unused Telegram code from `Tracker.gs`.
+
+## Instahyre terms (checked 20 Oct 2026)
+
+Instahyre's Terms of Use say users must not "use ... automated software ... to crawl or spider any part of the Platform" and must not "harvest or scrape" content. So auto-applying breaks their terms, the same kind of rule as LinkedIn. Likely worst case: Instahyre restricts or closes her account. Ways to lower the risk: a small daily cap, slow pacing, her own Chrome profile, stop at any CAPTCHA or check. Her decision: pending.
+
+Also from Instahyre's help centre: an application cannot be withdrawn once sent. So the first live run applies to one job only.
