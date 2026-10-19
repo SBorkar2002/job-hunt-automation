@@ -11,7 +11,7 @@ Be one of the first applicants on every good-fit role. Recruiters often start fr
 ## Links
 
 - Sheet (Job hunt tracker): https://docs.google.com/spreadsheets/d/1tj34leK-HVtZBhOoofL1ZZaOrc-_eXlE5gfaafy1E68/edit
-- Apps Script project: TODO (paste from the editor's address bar)
+- Apps Script project (Job hunt bot): https://script.google.com/home/projects/1wpIEesipTmHfU6vfUP5B73G0GZpspTfby8f32XTX-2SvgsuhBGFTT9CQ/edit
 - Code (private repo): https://github.com/SBorkar2002/job-hunt-automation
 - Workflow page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
 
