@@ -96,6 +96,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - `shared/config.json`: titles, excluded words, cities, caps, cover note (draft, needs her OK). Edit this to change filters.
 - `shared/filters.mjs`: decides if a job fits and gives the reason. `shared/sheet.mjs`: logs rows (prints only in dry run).
 - `instahyre/login.mjs` (`npm run instahyre:login`): opens Instahyre in the bot's own Chrome profile for her to log in once.
+- `instahyre/apply.mjs`: the Instahyre applier. `npm run instahyre:dry` (reads and decides, applies to nothing), `npm run instahyre:inspect` (dry run plus page captures in `instahyre/debug/`, git ignored), `npm run instahyre:live -- --limit 1` (one real application). Stops on logout or any CAPTCHA. Jobs that send her to a company website are marked "Needs you" for now.
 - `private/answers.local.json`: private answers (git ignored). Blank until she fills it.
 - `docs/workflow.html`: the auto-apply workflow for LinkedIn, Instahyre, Cutshort and Wellfound. Live page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
 
@@ -113,13 +114,21 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 
 - Done: requirements and answers recorded; git set up; Sheet setup script written (syntax checked, not yet run in Google); workflow page.
 - Decided 20 Oct: auto-apply with Sheet review, no Telegram. LinkedIn skipped. Instahyre first, one script per site.
-- Built 20 Oct (branch `feat/instahyre`): Sheet logging endpoint, shared config, cover note draft, Instahyre login helper.
-- **Waiting on Sejal:** (1) yes to automating Instahyre after the terms warning below, (2) OK on the cover note in `shared/config.json`, (3) log in once with `npm run instahyre:login`.
-- Next: Instahyre dry run (reads jobs, applies to nothing), then one real application with her OK.
-- Left: every site script; drop the unused Telegram code from `Tracker.gs`.
+- Built 20 Oct (branch `feat/instahyre`): Sheet endpoint, shared config and filters, cover note, Instahyre login helper and applier.
+- Proven 20 Oct: filters and note tested on sample jobs; logged-out dry run stops and reports "Logged out".
+- Not proven yet: anything behind the Instahyre login. Button and form text patterns are provisional until the first `--inspect` run with her login.
+- **Waiting on Sejal:** setup steps 1 to 7 above (Sheet, secret, web app, .env, answers, Instahyre login).
+- Next: `--inspect` run, tune the text patterns, dry run, then `--live --limit 1` with her OK and show the row. Then the hourly timer on the Mac.
+- Later: fill company-site forms (Greenhouse, Lever, Ashby) for jobs that leave Instahyre; Cutshort; Wellfound.
+
+## How it runs and moving to another laptop
+
+- The scripts are Node.js programs on the Mac. They drive a real Chrome window with Playwright (a free library that clicks and types like a person). Nothing is injected into the websites.
+- The Sheet side is Google Apps Script, which lives in your Google account.
+- Code lives in the private GitHub repo `SBorkar2002/job-hunt-automation`. On a new laptop: install Node, then run `git clone https://github.com/SBorkar2002/job-hunt-automation`, `npm install`, copy `.env` and `private/answers.local.json` across by hand (they are never in GitHub), and log in again with `npm run instahyre:login`.
 
 ## Instahyre terms (checked 20 Oct 2026)
 
-Instahyre's Terms of Use say users must not "use ... automated software ... to crawl or spider any part of the Platform" and must not "harvest or scrape" content. So auto-applying breaks their terms, the same kind of rule as LinkedIn. Likely worst case: Instahyre restricts or closes her account. Ways to lower the risk: a small daily cap, slow pacing, her own Chrome profile, stop at any CAPTCHA or check. Her decision: pending.
+Instahyre's Terms of Use say users must not "use ... automated software ... to crawl or spider any part of the Platform" and must not "harvest or scrape" content. So auto-applying breaks their terms, the same kind of rule as LinkedIn. Likely worst case: Instahyre restricts or closes her account. Ways to lower the risk: a small daily cap, slow pacing, her own Chrome profile, stop at any CAPTCHA or check. **Her decision (20 Oct 2026): yes, she accepts the account risk.** Cap: 10 applications a day, 90 to 180 seconds apart. Cover note draft approved.
 
 Also from Instahyre's help centre: an application cannot be withdrawn once sent. So the first live run applies to one job only.

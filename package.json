@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "instahyre:login": "node instahyre/login.mjs",
-    "check": "node --check shared/config.mjs && node --check shared/filters.mjs && node --check shared/sheet.mjs && node --check instahyre/login.mjs"
+    "check": "node --check shared/config.mjs && node --check shared/filters.mjs && node --check shared/sheet.mjs && node --check instahyre/login.mjs && node --check instahyre/apply.mjs",
+    "instahyre:dry": "node instahyre/apply.mjs",
+    "instahyre:inspect": "node instahyre/apply.mjs --inspect",
+    "instahyre:live": "node instahyre/apply.mjs --live"
   },
   "dependencies": {
     "playwright": "1.48.2"

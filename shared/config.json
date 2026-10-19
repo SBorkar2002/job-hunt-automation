@@ -10,8 +10,8 @@
   "resumeUrl": "https://sejalborkar.vercel.app/resume",
   "resumeVersion": "site-v1",
   "note": {
-    "version": "note-v1-draft",
-    "approved": false,
+    "version": "note-v1",
+    "approved": true,
     "text": "Hi {company} team, I'm Sejal, a product designer at Epifi working on GenAI products. I'd love to bring that to the {role} role. My work is here: {portfolio}"
   },
   "sites": {

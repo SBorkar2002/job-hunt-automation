@@ -3,3 +3,4 @@ private/
 *.local.*
 .DS_Store
 node_modules/
+instahyre/debug/
