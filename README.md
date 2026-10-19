@@ -91,6 +91,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.md`, which is
 
 - `apps-script/Tracker.gs`: shared setup. Creates the Sheet and its tabs (columns, status dropdowns, auto "Minutes to apply"), logs jobs without duplicates (`addJob`), and sends Telegram pings (`ping`) that stay muted in quiet hours.
 - `private/answers.local.md`: private answers template (git ignored).
+- `docs/workflow.html`: the full workflow diagram for LinkedIn, Instahyre, Cutshort and Wellfound, including every case where Telegram is used. Live page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
 
 ## Setup steps for Sejal (about 10 minutes, once)
 

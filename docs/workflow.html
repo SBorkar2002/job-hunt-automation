@@ -1,0 +1,228 @@
+<title>Job Hunt Workflow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; the diagram panel breaks wider and scrolls on its own. */
+:root {
+  --bg: #f6f7fa;
+  --fg: #1c2230;
+  --muted: #5a6478;
+  --line: #d9dde6;
+  --surface: #ffffff;
+  --accent: #2f5bd3;
+  --diagram-bg: #ffffff;
+  --cloud: #e3ecff;
+  --phone: #fff1d6;
+  --you: #dcf5e6;
+  --mac: #efe5ff;
+  --stop: #f3f4f7;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151c; --fg: #e6e9f0; --muted: #9aa3b5; --line: #2a303d;
+    --surface: #1a1e27; --accent: #8aa8ff; --diagram-bg: #f4f6fa;
+    --cloud: #1f2c4a; --phone: #3d3018; --you: #173a28; --mac: #2e2447; --stop: #252a35;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151c; --fg: #e6e9f0; --muted: #9aa3b5; --line: #2a303d;
+  --surface: #1a1e27; --accent: #8aa8ff; --diagram-bg: #f4f6fa;
+  --cloud: #1f2c4a; --phone: #3d3018; --you: #173a28; --mac: #2e2447; --stop: #252a35;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 40px; }
+.col { max-width: 68ch; }
+h1, h2 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: 2rem; }
+h2 { font-size: 1.3rem; }
+p { margin: 0; }
+section { display: grid; gap: 14px; min-width: 0; }
+.eyebrow { font: 600 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); }
+.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.part { padding: 14px 16px; border-radius: 10px; display: grid; gap: 4px; min-width: 0; }
+.part b { font-size: 0.95rem; }
+.part span { font-size: 0.9rem; color: var(--muted); }
+.cloud { background: var(--cloud); } .phone { background: var(--phone); }
+.you { background: var(--you); } .mac { background: var(--mac); }
+.diagram { background: var(--diagram-bg); border: 1px solid var(--line); border-radius: 12px; overflow: auto; max-height: 85vh; padding: 16px; }
+.diagram pre { margin: 0; min-width: 900px; }
+.hint { font-size: 0.85rem; color: var(--muted); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.92rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 0.72rem/1.3 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.tag { display: inline-block; font: 600 0.72rem/1 var(--font-mono); padding: 4px 7px; border-radius: 6px; }
+.yes { background: var(--you); } .part-yes { background: var(--phone); } .no { background: var(--stop); }
+code { font-family: var(--font-mono); font-size: 0.88em; }
+</style>
+
+<main>
+  <header class="col" style="display:grid;gap:10px">
+    <span class="eyebrow">Sejal's job hunt automation</span>
+    <h1>Job hunt workflow</h1>
+    <p class="lede">How a fresh job goes from a site to your Sheet, your phone and an application. It covers LinkedIn, Instahyre, Cutshort and Wellfound.</p>
+  </header>
+
+  <section>
+    <h2>The four places things happen</h2>
+    <div class="parts">
+      <div class="part cloud"><b>Google cloud</b><span>The Apps Script. Runs on a timer even with your laptop off. Finds jobs, filters them, writes the Sheet, sends pings.</span></div>
+      <div class="part phone"><b>Telegram on your phone</b><span>Where the system talks to you and you answer with one tap.</span></div>
+      <div class="part you"><b>You</b><span>Decide what to apply to. Apply by hand on LinkedIn.</span></div>
+      <div class="part mac"><b>Your Mac, when awake</b><span>Uses its own Chrome profile you logged into. Scans logged-in pages and submits approved applications.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Full workflow</h2>
+    <p class="hint">Scroll inside the box to see all of it. Diamonds are decisions, rounded boxes are timers, cylinders store data.</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 36, "rankSpacing": 48}, "themeVariables": {"fontFamily": "Public Sans, sans-serif", "fontSize": "14px", "lineColor": "#5a6478", "primaryTextColor": "#1c2230", "clusterBkg": "#fafbfd", "clusterBorder": "#c9cfdb"}}}%%
+flowchart TD
+  subgraph CLOUD["GOOGLE CLOUD: runs with laptop off"]
+    T1(["Every hour"])
+    LI["LinkedIn finder<br/>public job search, past hour, newest first<br/>no login, so your account is never touched"]
+    EM["Email finder<br/>reads Instahyre, Cutshort and Wellfound<br/>job alert emails in your Gmail"]
+    F{"Passes your filters?<br/>role, level, city, posted within 24h,<br/>no excluded words"}
+    DUP{"Already in<br/>the Sheet?"}
+    SH[("Google Sheet<br/>new row on that site's tab<br/>Status: New")]
+    QH{"Quiet hours?<br/>11pm to 8am"}
+    HOLD["Hold until 8am"]
+    SITE{"Which site?"}
+    QU[("Apply queue")]
+    T9(["Every day at 9pm"])
+    T8(["Every morning"])
+    FU{"Any follow-up<br/>date is today?"}
+  end
+
+  subgraph MAC["YOUR MAC: only when awake"]
+    MF["Logged-in finder<br/>scans Instahyre, Cutshort, Wellfound<br/>in its own Chrome profile"]
+    AW{"Mac awake?"}
+    AP["Applier<br/>opens the job, fills your answers,<br/>note and resume, submits"]
+    PB{"Any problem?<br/>logged out, CAPTCHA,<br/>question it can't answer"}
+  end
+
+  subgraph PHONE["TELEGRAM ON YOUR PHONE"]
+    P1["Ping: new LinkedIn job<br/>Open link, I applied, Skip"]
+    P2["Ping: new job<br/>note preview, Approve, Skip"]
+    P3["Ping: Applied"]
+    P4["Ping: Needs you<br/>site paused until fixed"]
+    P5["Ping: still waiting for your Mac"]
+    P6["Ping: daily summary"]
+    P7["Ping: follow up with this recruiter<br/>draft message ready"]
+  end
+
+  subgraph YOU["YOU"]
+    U1{"Apply?"}
+    U2{"Approve?"}
+    EA["Open LinkedIn, Easy Apply yourself<br/>then tap I applied"]
+    FIX["Log in again or finish<br/>the form by hand"]
+    SEND["Send the follow-up yourself"]
+  end
+
+  DROP["Dropped, not logged"]
+  SEEN["Ignored, already logged"]
+  DONE[("Sheet updated<br/>Applied at, Minutes to apply")]
+  SKIP[("Sheet updated<br/>Status: Skipped")]
+
+  T1 --> LI
+  T1 --> EM
+  MF -->|"hourly, while awake"| F
+  LI --> F
+  EM --> F
+  F -->|no| DROP
+  F -->|yes| DUP
+  DUP -->|yes| SEEN
+  DUP -->|no| SH
+  SH --> QH
+  QH -->|yes| HOLD
+  HOLD --> SITE
+  QH -->|no| SITE
+  SITE -->|LinkedIn| P1
+  SITE -->|"Instahyre, Cutshort, Wellfound"| P2
+  P1 --> U1
+  U1 -->|yes| EA
+  EA --> DONE
+  U1 -->|no| SKIP
+  P2 --> U2
+  U2 -->|Skip| SKIP
+  U2 -->|Approve| QU
+  QU --> AW
+  AW -->|"no, over 3 hours"| P5
+  P5 -.->|"you open the laptop"| AW
+  AW -->|yes| AP
+  AP --> PB
+  PB -->|no| P3
+  P3 --> DONE
+  PB -->|yes| P4
+  P4 --> FIX
+  FIX --> DONE
+  T9 --> P6
+  T8 --> FU
+  FU -->|yes| P7
+  P7 --> SEND
+
+  classDef cloud fill:#e3ecff,stroke:#7f9be6,color:#1c2230
+  classDef phone fill:#fff1d6,stroke:#d9a640,color:#1c2230
+  classDef you fill:#dcf5e6,stroke:#5bb282,color:#1c2230
+  classDef mac fill:#efe5ff,stroke:#9b7fd9,color:#1c2230
+  classDef stop fill:#f3f4f7,stroke:#b4bac6,color:#5a6478
+  class T1,LI,EM,F,DUP,SH,QH,HOLD,SITE,QU,T9,T8,FU cloud
+  class P1,P2,P3,P4,P5,P6,P7 phone
+  class U1,U2,EA,FIX,SEND you
+  class MF,AW,AP,PB mac
+  class DROP,SEEN,DONE,SKIP stop
+</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>When Telegram is used</h2>
+    <p class="col lede">Telegram is the only way the system can reach you right away and get a one-tap answer back. Without it you would have to keep opening the Sheet to check for new jobs, and nothing could wait for your approval.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Case</th><th>When it happens</th><th>What you see</th><th>What you do</th></tr></thead>
+        <tbody>
+          <tr><td>New LinkedIn job</td><td>The hourly scan finds a fresh role that fits</td><td>Role, company, posted time, link</td><td>Open it, Easy Apply, tap I applied. Or Skip.</td></tr>
+          <tr><td>New job, other sites</td><td>A fresh Instahyre, Cutshort or Wellfound role fits</td><td>Role, company, the note it will send</td><td>Approve or Skip</td></tr>
+          <tr><td>Applied</td><td>Your Mac submitted an approved application</td><td>Confirmation with the job link</td><td>Nothing</td></tr>
+          <tr><td>Needs you</td><td>Logged out, a CAPTCHA, or a form question it can't answer</td><td>What went wrong and on which site</td><td>Log in again or finish that form by hand</td></tr>
+          <tr><td>Mac asleep</td><td>Approved jobs have waited over 3 hours</td><td>How many are waiting</td><td>Open your laptop</td></tr>
+          <tr><td>Follow-up</td><td>A job's follow-up date is today</td><td>Recruiter name and a drafted message</td><td>Send it yourself, or ignore</td></tr>
+          <tr><td>Daily summary</td><td>Every day at 9pm</td><td>Found, applied, skipped, waiting</td><td>Nothing</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Per site</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Site</th><th>How it finds jobs</th><th>How it applies</th><th>Laptop off?</th></tr></thead>
+        <tbody>
+          <tr><td>LinkedIn</td><td>Public job search every hour, no login</td><td>You apply by hand. No script ever logs in or clicks there.</td><td><span class="tag yes">Finding works</span></td></tr>
+          <tr><td>Instahyre</td><td>Alert emails in Gmail (cloud), plus a logged-in scan on your Mac</td><td>After Approve, your Mac clicks Interested</td><td><span class="tag part-yes">Finding only</span></td></tr>
+          <tr><td>Cutshort</td><td>Alert emails in Gmail (cloud), plus a logged-in scan on your Mac</td><td>After Approve, your Mac applies with your note</td><td><span class="tag part-yes">Finding only</span></td></tr>
+          <tr><td>Wellfound</td><td>Alert emails in Gmail (cloud), plus a logged-in scan on your Mac</td><td>After Approve, your Mac fills the short form with your note</td><td><span class="tag part-yes">Finding only</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hint col">Applying always needs your login, and your login stays on your Mac only. Still to check: how fast each site's alert emails arrive, which decides how much of the finding can run in the cloud.</p>
+  </section>
+</main>
