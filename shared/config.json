@@ -1,7 +1,7 @@
 {
   "titles": ["product designer", "ux designer", "ui/ux designer", "ui ux designer", "ux/ui designer", "interaction designer", "ai product designer", "genai product designer"],
   "excludeWords": ["senior", "sr.", "lead", "principal", "manager", "head of", "director", "staff", "intern", "internship", "5+ years", "6+ years", "7+ years", "8+ years"],
-  "locations": ["bengaluru", "bangalore", "mumbai", "remote"],
+  "locations": ["bengaluru", "bangalore", "remote", "work from home", "wfh"],
   "maxYearsRequired": 2,
   "avoidCompanies": [],
   "dreamCompanies": [],

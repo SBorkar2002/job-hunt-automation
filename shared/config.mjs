@@ -1,5 +1,5 @@
 // Loads shared settings, the local .env and private answers. Nothing here prints private values.
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import os from 'node:os';
@@ -21,7 +21,19 @@ const answersPath = join(ROOT, 'private/answers.local.json');
 export const answers = existsSync(answersPath) ? JSON.parse(readFileSync(answersPath, 'utf8')) : {};
 
 // Each site gets its own Chrome profile on this Mac, outside the repo.
-export const profileDir = site => join(os.homedir(), '.jobbot', 'profiles', site);
+// Like normal Chrome with "Continue where you left off", so a site login survives a restart.
+export function profileDir(site) {
+  const dir = join(os.homedir(), '.jobbot', 'profiles', site);
+  const prefsPath = join(dir, 'Default', 'Preferences');
+  mkdirSync(join(dir, 'Default'), { recursive: true });
+  let prefs = {};
+  try { prefs = JSON.parse(readFileSync(prefsPath, 'utf8')); } catch {}
+  if (prefs.session?.restore_on_startup !== 1) {
+    prefs.session = { ...(prefs.session || {}), restore_on_startup: 1 };
+    writeFileSync(prefsPath, JSON.stringify(prefs));
+  }
+  return dir;
+}
 
 export function noteFor(job, site) {
   const portfolio = `${config.portfolio}/?ref=${config.sites[site].ref}`;

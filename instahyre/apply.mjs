@@ -25,13 +25,12 @@ const LIMIT = limitArg >= 0 ? Number(args[limitArg + 1]) : Infinity;
 const DRY = !LIVE;
 
 const URLS = {
-  opportunities: 'https://www.instahyre.com/candidate/opportunities/',
+  opportunities: 'https://www.instahyre.com/candidate/opportunities/?matching=true',
 };
 
 // Text patterns, not CSS paths, so small redesigns don't break the script.
 // Marked provisional until checked against the logged-in page with --inspect.
 const TEXT = {
-  view: /^\s*view\s*$/i,
   apply: /^\s*(apply|apply now|interested|i'?m interested)\s*$/i,
   submit: /^\s*(submit|apply|send|send application|confirm)\s*$/i,
   done: /(applied|application (sent|submitted)|you have applied)/i,
@@ -91,52 +90,26 @@ async function needsYou(job, reason) {
 }
 
 // ---------- reading jobs ----------
-// Instahyre loads opportunities as JSON. We keep any job-like objects it sends,
-// and fall back to reading the cards on screen.
-const seenJson = [];
-function collectJson(body) {
-  const walk = (v, depth = 0) => {
-    if (!v || depth > 6) return;
-    if (Array.isArray(v)) return v.forEach(x => walk(x, depth + 1));
-    if (typeof v === 'object') {
-      const keys = Object.keys(v).join(' ');
-      if (/(designation|title|job_title)/i.test(keys) && /(employer|company)/i.test(keys)) seenJson.push(v);
-      Object.values(v).forEach(x => walk(x, depth + 1));
-    }
-  };
-  walk(body);
-}
-
-function fromJson(o) {
-  const pick = (...ks) => { for (const k of ks) { const v = k.split('.').reduce((a, p) => a?.[p], o); if (v) return v; } return ''; };
-  const loc = pick('locations', 'location', 'job.locations');
-  return {
-    id: String(pick('id', 'job.id', 'opportunity_id')),
-    role: pick('designation', 'title', 'job_title', 'job.designation', 'job.title'),
-    company: pick('employer.company_name', 'employer.name', 'company_name', 'company.name', 'employer'),
-    location: Array.isArray(loc) ? loc.map(l => l.name || l).join(', ') : String(loc || ''),
-    jobLink: pick('public_url', 'url', 'job.public_url') || '',
-    postedAt: pick('created_at', 'posted_at', 'job.created_at') || '',
-  };
-}
-
-async function readJobs(page) {
-  const jobs = seenJson.map(fromJson).filter(j => j.role && j.company);
-  if (jobs.length) return dedupe(jobs);
-
-  // Fallback: each card that has a View button.
-  const cards = page.getByRole('button', { name: TEXT.view });
-  const n = await cards.count();
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const card = cards.nth(i).locator('xpath=ancestor::*[self::div or self::li][string-length(normalize-space()) > 30][1]');
-    const lines = (await card.innerText().catch(() => '')).split('\n').map(s => s.trim()).filter(Boolean);
-    out.push({ id: `card-${i}-${lines.slice(0, 2).join('|')}`, role: lines[0] || '', company: lines[1] || '', location: lines.find(l => /,|remote|bangalore|bengaluru|mumbai/i.test(l)) || '', cardIndex: i });
+// The Opportunities page loads its list from candidate_matching as JSON. Each object has
+// employer.company_name and job { id, title, locations, opportunity_url }. There is no posted
+// date, so newer job ids (higher numbers) go first.
+const feed = new Map();
+function collectFeed(url, body) {
+  if (!/candidate_opportunities\/candidate_matching\?/.test(url) || !Array.isArray(body?.objects)) return;
+  for (const o of body.objects) {
+    const j = o.job || {};
+    if (!j.id || j.is_active === false || j.is_internship) continue;
+    feed.set(String(j.id), {
+      id: String(j.id),
+      role: (j.title || j.candidate_title || '').trim(),
+      company: (o.employer?.company_name || j.hiring_company_name || '').trim(),
+      location: j.locations || '',
+      jobLink: j.opportunity_url ? `https://www.instahyre.com${j.opportunity_url}` : '',
+    });
   }
-  return out;
 }
 
-const dedupe = jobs => [...new Map(jobs.map(j => [j.id || j.role + j.company, j])).values()];
+const readJobs = () => [...feed.values()].sort((x, y) => Number(y.id) - Number(x.id));
 
 // ---------- applying ----------
 async function fillForm(page, job) {
@@ -169,15 +142,21 @@ async function fillForm(page, job) {
 
 async function applyTo(page, job) {
   // Open the job.
-  if (job.jobLink) await page.goto(job.jobLink);
-  else if (job.cardIndex != null) await page.getByRole('button', { name: TEXT.view }).nth(job.cardIndex).click();
-  await page.waitForLoadState('domcontentloaded');
+  await page.goto(job.jobLink, { waitUntil: 'domcontentloaded' });
   await sleep(1500);
-  job.jobLink = job.jobLink || page.url();
   await snapshot(page, `job-${counts.found}`);
 
   const why = await blocked(page);
   if (why) return { stop: why };
+
+  // The job header shows experience like "1-5 Years". Recheck fit with it.
+  const header = (await page.locator('body').innerText()).slice(0, 1500);
+  const exp = header.match(/(\d+)\s*-\s*(\d+)\s*Years/i);
+  if (exp) {
+    job.minYears = Number(exp[1]);
+    const fit = fits(job);
+    if (!fit.ok) return { skip: fit.reason };
+  }
 
   const apply = page.getByRole('button', { name: TEXT.apply }).or(page.getByRole('link', { name: TEXT.apply })).first();
   if (!(await apply.count())) return { needs: 'No Apply or Interested button found' };
@@ -221,7 +200,7 @@ const ctx = await chromium.launchPersistentContext(profileDir(SITE), { channel: 
 const page = ctx.pages()[0] || await ctx.newPage();
 page.on('response', async r => {
   if (!/json/.test(r.headers()['content-type'] || '')) return;
-  try { collectJson(await r.json()); } catch {}
+  try { collectFeed(r.url(), await r.json()); } catch {}
   if (INSPECT && /instahyre\.com\/api/.test(r.url())) {
     try { writeFileSync(join(debugDir, `api-${Date.now()}.json`), JSON.stringify({ url: r.url(), body: await r.json() }, null, 2)); } catch {}
   }
@@ -237,7 +216,7 @@ try {
     log(`STOP: ${stop}`);
     await needsYou({ company: 'Instahyre', role: '(whole site)', jobLink: URLS.opportunities }, stop);
   } else {
-    const jobs = await readJobs(page);
+    const jobs = readJobs();
     counts.found = jobs.length;
     log(`Found ${jobs.length} opportunities`);
 
@@ -257,6 +236,7 @@ try {
       const result = await applyTo(page, job);
       const row = { ...job, note: config.note.version, resume: config.resumeVersion, postedAt: job.postedAt || '' };
 
+      if (result.skip) { counts.skipped++; skips['experience'] = (skips['experience'] || 0) + 1; log(`  skip: ${label} (${result.skip})`); await page.goto(URLS.opportunities, { waitUntil: 'domcontentloaded' }); continue; }
       if (result.stop) { log(`STOP: ${result.stop}`); await needsYou(row, result.stop); break; }
       if (result.needs) { await needsYou(row, result.needs); state.handled[key] = 'needs you'; }
       if (result.dry) { log(`  [dry run] would apply with note: "${noteFor(job, SITE)}"`); }
@@ -273,10 +253,10 @@ try {
     }
   }
 } catch (err) {
-  log(`ERROR: ${err.message}`);
+  log(/closed/.test(err.message) ? 'STOP: the bot window was closed during the run' : `ERROR: ${err.message}`);
   process.exitCode = 1;
 } finally {
   log(`\nDone. Found ${counts.found}, skipped ${counts.skipped}, applied ${counts.applied}, needs you ${counts.needsYou}.`);
   for (const [why, n] of Object.entries(skips)) log(`  skipped ${n}: ${why}`);
-  await ctx.close();
+  await ctx.close().catch(() => {});
 }

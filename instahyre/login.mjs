@@ -8,6 +8,11 @@ const ctx = await chromium.launchPersistentContext(profileDir('instahyre'), {
 });
 const page = ctx.pages()[0] || await ctx.newPage();
 await page.goto('https://www.instahyre.com/login/');
-console.log('Log in to Instahyre in the window that opened, then close the window.');
-await new Promise(resolve => ctx.on('close', resolve));
-console.log('Saved. You stay logged in for the scripts.');
+console.log('Log in to Instahyre in the window that opened. It closes by itself once you are in.');
+// Done when the page leaves the login screen for your candidate pages, or if you close it.
+const loggedIn = page.waitForURL(u => /\/candidate\//.test(u.pathname), { timeout: 15 * 60 * 1000 }).then(() => true).catch(() => false);
+const closed = new Promise(resolve => page.on('close', () => resolve(false)));
+const ok = await Promise.race([loggedIn, closed]);
+if (ok) await page.waitForTimeout(4000);
+await ctx.close().catch(() => {});
+console.log(ok ? 'Logged in and saved. You stay logged in for the scripts.' : 'Window closed before login finished. Run npm run instahyre:login again.');

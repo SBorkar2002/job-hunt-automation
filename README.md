@@ -62,7 +62,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 **Roles**
 - Titles: Product Designer, UX Designer, UI/UX Designer, AI / GenAI Product Designer, Interaction Designer.
 - Level: entry and Associate (0 to 2 years). Skip Senior, Lead, Principal, Manager.
-- Locations: Bengaluru, Mumbai, remote (India).
+- Locations: Bengaluru or remote (India). No Mumbai (decided 20 Oct).
 - Start date: in private answers. Flag "immediate joiner" roles, don't skip them.
 - Prefer: AI products, fintech, consumer apps, design-led startups.
 - Avoid: agencies, IT services, unpaid or contract-only roles, betting apps.
@@ -122,10 +122,10 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - Done: requirements and answers recorded; git set up; Sheet setup script written (syntax checked, not yet run in Google); workflow page.
 - Decided 20 Oct: auto-apply with Sheet review, no Telegram. LinkedIn skipped. Instahyre first, one script per site.
 - Built 20 Oct (branch `feat/instahyre`): Sheet endpoint, shared config and filters, cover note, Instahyre login helper and applier.
-- Proven 20 Oct: filters and note tested on sample jobs; logged-out dry run stops and reports "Logged out".
-- Not proven yet: anything behind the Instahyre login. Button and form text patterns are provisional until the first `--inspect` run with her login.
-- **Waiting on Sejal:** setup steps 1 to 7 above (Sheet, secret, web app, .env, answers, Instahyre login).
-- Next: `--inspect` run, tune the text patterns, dry run, then `--live --limit 1` with her OK and show the row. Then the hourly timer on the Mac.
+- Proven 20 Oct: filters and note on sample jobs; Sheet connection (read check, wrong secret refused); login survives a Chrome restart; inspect dry run read all 11 recommended jobs from Instahyre's feed, skipped 10 with reasons (7 title, 3 location), found 1 fit (Foresight Labs, Product Designer UI/UX) and its "Apply now" button.
+- Not proven yet: what happens after clicking "Apply now" (any form). Needs one live apply.
+- Next: `npm run instahyre:live -- --limit 1` with her OK, then show the Sheet row. Then the hourly timer on the Mac.
+- Idea: Instahyre's recommended feed is mostly visual and graphic roles. Its job search and "Similar jobs" show many more Product Designer roles in Bengaluru. Next step after the first live apply: also read search results for her titles.
 - Later: fill company-site forms (Greenhouse, Lever, Ashby) for jobs that leave Instahyre; Cutshort; Wellfound.
 
 ## How it runs and moving to another laptop
