@@ -63,8 +63,11 @@ if (args.includes('--login') && site.plainLogin) {
   await sleep(2000);
 }
 
+// Sites logged in through plain Chrome store cookies locked with the Mac's real keychain,
+// so the bot's Chrome must use the real keychain too (Playwright's default is a stand-in).
 const ctx = await chromium.launchPersistentContext(profileDir(site.name), {
   channel: 'chrome', headless: false, viewport: args.includes('--login') ? null : { width: 1280, height: 900 },
+  ...(site.plainLogin ? { ignoreDefaultArgs: ['--use-mock-keychain', '--password-store=basic'] } : {}),
 });
 const page = ctx.pages()[0] || await ctx.newPage();
 
