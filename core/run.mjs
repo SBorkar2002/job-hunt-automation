@@ -41,27 +41,26 @@ if (args.includes('--login') && site.plainLogin) {
   const port = 9333;
   const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     [`--user-data-dir=${profileDir(site.name)}`, `--remote-debugging-port=${port}`, '--no-first-run', '--no-default-browser-check', site.loginUrl], { stdio: 'ignore' });
-  log(`Log in to ${site.label} in the Chrome window that opened (Google sign-in works here). It closes by itself once you are in.`);
+  log(`Log in to ${site.label} in the Chrome window that opened (Google sign-in works here).`);
+  log('When you see your name or photo on the site, quit that Chrome with Cmd + Q.');
   await sleep(3000);
   const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
   const bctx = browser.contexts()[0];
   const host = new URL(site.listUrl).host.replace(/^www\./, '');
-  let ok = false;
-  for (let i = 0; i < 300 && chrome.exitCode === null; i++) { // up to 15 minutes
-    await sleep(3000);
-    const tab = bctx.pages().find(p => p.url().includes(host) && !site.loggedOut(p.url()));
-    if (tab && await site.isLoggedIn(tab).catch(() => false)) { ok = true; break; }
-  }
-  if (ok) {
-    await sleep(3000);
-    const keep = (await bctx.cookies()).filter(c => c.domain.replace(/^\./, '').endsWith(host) && c.expires === -1);
-    await bctx.addCookies(keep.map(c => ({ ...c, expires: Math.floor(Date.now() / 1000) + 30 * 86400 })));
-    log(`Kept ${keep.length} login cookie(s) for 30 days.`);
-  }
-  await browser.close().catch(() => {});
-  chrome.kill('SIGTERM');
+  // Until she quits: any login cookie that would vanish on restart is kept for 30 days instead.
+  let kept = new Set();
+  const keepCookies = async () => {
+    const all = await bctx.cookies().catch(() => []);
+    const fresh = all.filter(c => c.domain.replace(/^\./, '').endsWith(host) && c.expires === -1);
+    if (!fresh.length) return;
+    await bctx.addCookies(fresh.map(c => ({ ...c, expires: Math.floor(Date.now() / 1000) + 30 * 86400 }))).catch(() => {});
+    fresh.forEach(c => kept.add(c.name));
+  };
+  const timer = setInterval(keepCookies, 2000);
+  await new Promise(resolve => { chrome.on('exit', resolve); browser.on('disconnected', resolve); });
+  clearInterval(timer);
+  log(`Chrome closed. Login cookies kept: ${kept.size ? [...kept].join(', ') : 'none needed'}. Checking the login after a restart...`);
   await sleep(2000);
-  if (!ok) { log(`Not logged in yet. Run npm run ${site.name}:login again.`); process.exit(0); }
 }
 
 const ctx = await chromium.launchPersistentContext(profileDir(site.name), {
