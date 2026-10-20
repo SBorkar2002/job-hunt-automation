@@ -55,6 +55,11 @@ function setupTab_(ss, name) {
   ['Found at', 'Posted at', 'Applied at', 'Response at'].forEach(n =>
     sh.getRange(2, col(n), rows).setNumberFormat('dd mmm yyyy, hh:mm'));
   sh.getRange(2, col('Follow-up on'), rows).setNumberFormat('dd mmm yyyy');
+
+  // Wrap text and center it vertically on the whole tab, so new rows look the same.
+  sh.getRange(1, 1, sh.getMaxRows(), COLUMNS.length).setWrap(true).setVerticalAlignment('middle');
+  const widths = { 'Company': 140, 'Role': 180, 'Location / mode': 130, 'Job link': 220, 'Recruiter / poster': 180, 'Note used': 260, 'Notes': 260 };
+  COLUMNS.forEach((c, i) => sh.setColumnWidth(i + 1, widths[c] || 120));
 }
 
 function sheet_() {
@@ -112,7 +117,7 @@ function addJob(tab, job) {
  * Requests must carry SHEET_SECRET from Script Properties, so nobody
  * else can write to the Sheet.
  *
- * Body: { secret, action: 'has' | 'add', tab, job }
+ * Body: { secret, action: 'has' | 'add' | 'update', tab, job }
  */
 function doPost(e) {
   const out = obj => ContentService.createTextOutput(JSON.stringify(obj))
@@ -124,6 +129,7 @@ function doPost(e) {
 
     if (body.action === 'has') return out({ ok: true, has: hasJob_(body.tab, body.job.jobLink) });
     if (body.action === 'add') return out({ ok: true, added: addJob(body.tab, body.job) });
+    if (body.action === 'update') return out({ ok: true, updated: updateJob_(body.tab, body.job) });
     return out({ ok: false, error: 'unknown action' });
   } catch (err) {
     return out({ ok: false, error: String(err) });
@@ -135,6 +141,29 @@ function hasJob_(tab, link) {
   const last = sh.getLastRow();
   if (last < 2 || !link) return false;
   return sh.getRange(2, COLUMNS.indexOf('Job link') + 1, last - 1).getValues().flat().includes(link);
+}
+
+/**
+ * Updates the row with this job link. job: { jobLink, action, status, appliedAt, notes }.
+ * Notes are added after what is already there. Returns true when a row was found.
+ */
+function updateJob_(tab, job) {
+  const sh = sheet_().getSheetByName(tab);
+  const last = sh.getLastRow();
+  if (last < 2 || !job.jobLink) return false;
+  const col = n => COLUMNS.indexOf(n) + 1;
+  const links = sh.getRange(2, col('Job link'), last - 1).getValues().flat();
+  const i = links.indexOf(job.jobLink);
+  if (i < 0) return false;
+  const r = i + 2;
+  if (job.action) sh.getRange(r, col('Action')).setValue(job.action);
+  if (job.status) sh.getRange(r, col('Status')).setValue(job.status);
+  if (job.appliedAt) sh.getRange(r, col('Applied at')).setValue(job.appliedAt);
+  if (job.notes) {
+    const cell = sh.getRange(r, col('Notes'));
+    cell.setValue([cell.getValue(), job.notes].filter(String).join(' · '));
+  }
+  return true;
 }
 
 /** Run once to create the secret the Mac scripts use. Copy it from the log into the local .env file. */

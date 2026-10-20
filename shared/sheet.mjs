@@ -62,3 +62,13 @@ export async function logRow(tab, job, { dryRun } = {}) {
     return false;
   }
 }
+
+// Changes an existing row (found by job link). Needs the 'update' action in Tracker.gs.
+export async function updateRow(tab, job, { dryRun } = {}) {
+  if (dryRun) {
+    console.log(`  [dry run] would update ${tab} row: ${job.jobLink} -> ${job.status || job.action}`);
+    return false;
+  }
+  try { return (await call('update', tab, job)).updated; }
+  catch (err) { console.log(`  (Sheet update failed, will retry next run: ${err.message})`); return false; }
+}

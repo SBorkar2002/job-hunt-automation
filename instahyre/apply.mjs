@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import os from 'node:os';
 import { config, answers, profileDir, noteFor, noteVersion, ROOT } from '../shared/config.mjs';
 import { fits, payTopLpa } from '../shared/filters.mjs';
-import { alreadyLogged, logRow } from '../shared/sheet.mjs';
+import { alreadyLogged, logRow, updateRow } from '../shared/sheet.mjs';
 
 const SITE = 'instahyre';
 const { tab: TAB, dailyCap, minGapSeconds } = config.sites[SITE];
@@ -54,6 +54,7 @@ const stateDir = join(os.homedir(), '.jobbot', 'state');
 const statePath = join(stateDir, `${SITE}.json`);
 mkdirSync(stateDir, { recursive: true });
 const state = existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : { handled: {}, days: {} };
+state.needs ||= {}; // jobs marked Needs you, rechecked each run in case you applied yourself
 const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 const appliedToday = () => (state.days[today] || []).length;
 const saveState = () => { if (!DRY) writeFileSync(statePath, JSON.stringify(state, null, 2)); };
@@ -61,7 +62,7 @@ const saveState = () => { if (!DRY) writeFileSync(statePath, JSON.stringify(stat
 const debugDir = join(ROOT, 'instahyre', 'debug');
 if (INSPECT) mkdirSync(debugDir, { recursive: true });
 
-const counts = { found: 0, skipped: 0, applied: 0, needsYou: 0 };
+const counts = { found: 0, skipped: 0, applied: 0, needsYou: 0, youApplied: 0 };
 const skips = {};
 const log = (...a) => console.log(...a);
 // Sheets reads "2026-10-20 09:42:05" as a date in any locale, in the Sheet's own time zone (IST).
@@ -205,6 +206,27 @@ async function applyTo(page, job) {
   return { applied: true };
 }
 
+// ---------- Needs you jobs you applied to yourself ----------
+// Instahyre shows "Application sent!" and hides Apply now once you've applied. If so, flip the row.
+async function recheckNeedsYou(page) {
+  const open = Object.entries(state.needs);
+  if (!open.length) return;
+  log(`Rechecking ${open.length} Needs you job(s)`);
+  for (const [key, job] of open) {
+    await page.goto(job.jobLink, { waitUntil: 'domcontentloaded' });
+    await sleep(2500);
+    if (await blocked(page)) return;
+    const text = await page.locator('body').innerText();
+    const applyLeft = await page.getByRole('button', { name: TEXT.apply }).count();
+    if (TEXT.done.test(text) && !applyLeft) {
+      const ok = await updateRow(TAB, { jobLink: job.jobLink, action: 'Applied', status: 'Applied', appliedAt: istNow(), notes: 'You applied yourself (time is when the bot noticed)' }, { dryRun: DRY });
+      log(`  you applied: ${job.company} | ${job.role}${ok ? ' (row updated)' : ''}`);
+      if (ok) { delete state.needs[key]; state.handled[key] = 'applied by you'; counts.youApplied++; }
+    }
+  }
+  saveState();
+}
+
 // ---------- run ----------
 log(`\n=== ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} ===`);
 log(`Instahyre run: ${DRY ? 'DRY RUN (applies to nothing, logs nothing)' : 'LIVE'}${INSPECT ? ' + inspect' : ''}`);
@@ -234,6 +256,10 @@ try {
     counts.found = jobs.length;
     log(`Found ${jobs.length} opportunities`);
 
+    for (const j of jobs) if (state.handled[j.id] === 'needs you' && !state.needs[j.id] && j.jobLink) state.needs[j.id] = { jobLink: j.jobLink, company: j.company, role: j.role };
+    await recheckNeedsYou(page);
+    await page.goto(URLS.opportunities, { waitUntil: 'domcontentloaded' });
+
     for (const job of jobs) {
       const key = job.id || `${job.company}|${job.role}`;
       const label = `${job.company} | ${job.role} | ${job.location}`;
@@ -261,7 +287,7 @@ try {
 
       if (result.skip) { counts.skipped++; const k = /pay/.test(result.skip) ? 'pay' : 'experience'; skips[k] = (skips[k] || 0) + 1; log(`  skip: ${label} (${result.skip})`); await page.goto(URLS.opportunities, { waitUntil: 'domcontentloaded' }); continue; }
       if (result.stop) { log(`STOP: ${result.stop}`); await needsYou(row, result.stop); break; }
-      if (result.needs) { await needsYou(row, result.needs); state.handled[key] = 'needs you'; }
+      if (result.needs) { await needsYou(row, result.needs); state.handled[key] = 'needs you'; if (job.jobLink) state.needs[key] = { jobLink: job.jobLink, company: job.company, role: job.role }; }
       if (result.dry) { log(`  [dry run] would apply. Note if a form asks: ${noteFor(job, SITE) ? `"${noteFor(job, SITE)}"` : `(${job.track} note not approved yet)`}`); }
       if (result.applied) {
         counts.applied++;
@@ -272,14 +298,14 @@ try {
       }
       saveState();
       await page.goto(URLS.opportunities, { waitUntil: 'domcontentloaded' });
-      if (!DRY && (result.applied || result.needs)) await pause();
+      if (!DRY && result.applied) await pause();
     }
   }
 } catch (err) {
   log(/closed/.test(err.message) ? 'STOP: the bot window was closed during the run' : `ERROR: ${err.message}`);
   process.exitCode = 1;
 } finally {
-  log(`\nDone. Found ${counts.found}, skipped ${counts.skipped}, applied ${counts.applied}, needs you ${counts.needsYou}.`);
+  log(`\nDone. Found ${counts.found}, skipped ${counts.skipped}, applied ${counts.applied}, needs you ${counts.needsYou}${counts.youApplied ? `, you applied ${counts.youApplied}` : ''}.`);
   for (const [why, n] of Object.entries(skips)) log(`  skipped ${n}: ${why}`);
   await ctx.close().catch(() => {});
 }
