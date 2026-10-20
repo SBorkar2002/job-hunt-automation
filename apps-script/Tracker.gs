@@ -172,6 +172,7 @@ function addJob(tab, job) {
  *   run                  one Runs row and the site's Health line
  *   lookup               rows for the same company and role on any site tab
  *   setup                reapplies the format (setupTracker)
+ *   peek                 reads back the Health tab and the last Runs rows, as shown
  */
 function doPost(e) {
   const out = obj => ContentService.createTextOutput(JSON.stringify(obj))
@@ -188,6 +189,7 @@ function doPost(e) {
     if (a === 'run') { logRun_(body.run); return out({ ok: true }); }
     if (a === 'lookup') return out({ ok: true, rows: lookup_(body.job.company, body.job.role) });
     if (a === 'setup') { setupTracker(); return out({ ok: true }); }
+    if (a === 'peek') return out({ ok: true, health: shown_('Health', 20), runs: shown_('Runs', 3) });
     return out({ ok: false, error: 'unknown action' });
   } catch (err) {
     return out({ ok: false, error: String(err) });
@@ -273,6 +275,16 @@ function logRun_(run) {
   set('Today', run.appliedToday + ' of ' + run.cap + ' applied');
   set('Login', run.health === 'Login expired' ? 'Expired: run npm run ' + String(run.site).toLowerCase() + ':login' : 'OK');
   set('Problem', (run.errors || []).join('; ') || 'None');
+}
+
+/** The last n rows of a tab, as the Sheet displays them (header first). */
+function shown_(name, n) {
+  const sh = sheet_().getSheetByName(name);
+  const last = sh.getLastRow();
+  const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+  if (last < 2) return [head];
+  const from = Math.max(2, last - n + 1);
+  return [head].concat(sh.getRange(from, 1, last - from + 1, sh.getLastColumn()).getDisplayValues());
 }
 
 /** Run once to create the secret the Mac scripts use. Copy it from the log into the local .env file. */

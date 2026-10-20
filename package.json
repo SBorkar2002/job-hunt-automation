@@ -14,7 +14,8 @@
     "timer:run-now": "bash scripts/timer.sh run-now instahyre",
     "check": "for f in core/*.mjs sites/*.mjs shared/*.mjs; do node --check $f || exit 1; done",
     "sheet:deploy": "bash scripts/sheet-deploy.sh",
-    "clasp:login": "clasp login"
+    "clasp:login": "clasp login",
+    "sheet:peek": "node scripts/peek.mjs"
   },
   "dependencies": {
     "playwright": "1.48.2"
