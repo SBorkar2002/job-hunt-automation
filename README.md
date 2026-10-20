@@ -66,7 +66,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
   - Art: 2D Artist, Illustrator, Concept Artist, Comic Artist, Storyboard Artist, Motion (Graphics) Designer.
   - Brand: Brand Designer, Creative Designer, Communication Designer.
   - Graphic: Graphic Designer, only if the job shows pay of 8 LPA or more. No pay shown means "Needs you".
-- Notes: product and visual roles use the product note. Art, brand and graphic roles use a second note (draft, needs her OK); until then, if a form asks for a note on those roles, the job becomes "Needs you".
+- Notes: product and visual roles use the product note. Art, brand and graphic roles use a second note (approved 20 Oct): "Hi {company} team, I'm Sejal, a designer who works across product design, illustration and visual design. I'd love to bring that to the {role} role. My work is here: {portfolio}".
 - Level: entry and Associate (0 to 2 years). Skip Senior, Lead, Principal, Manager.
 - Locations: Bengaluru or remote (India). No Mumbai (decided 20 Oct).
 - Start date: in private answers. Flag "immediate joiner" roles, don't skip them.
@@ -132,7 +132,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - **First live application, 20 Oct (her OK):** Foresight Labs, Product Designer UI/UX. Instahyre shows "Application sent!", the Apply button is gone, and the row is in the Instahyre tab. No extra form appeared for this job. Fix made on the way: "Apply now" is a button inside a link, so the bot triggers the button itself.
 - **Hourly timer on, 20 Oct (her OK):** Instahyre runs live every hour from 8am to 11pm, up to 10 applications a day. Proven: a timed run started by itself, read 8 jobs, skipped 8 with reasons. A missed hour (Mac asleep) runs once on wake.
 - Fixed 20 Oct: an 8:13am run right after wake couldn't reach the Sheet ("fetch failed") and stopped early. Sheet calls now retry for about 50 seconds; rows that still can't be sent wait in `~/.jobbot/state/pending-rows.json` and go out on the next run.
-- Built 20 Oct (branch `feat/more-titles`): title tracks, pay rule for graphic roles, second note. Dry run on her feed: 2D Artist (OpEzee) and Visual Designer (Plaza) would be applied to, Graphic Designer (IDEX) becomes "Needs you" (no pay shown), 5 skipped for location.
+- Live 20 Oct (PR #2 merged, timer refreshed): title tracks, pay rule for graphic roles, second note. Dry run on her feed: 2D Artist (OpEzee) and Visual Designer (Plaza) would be applied to, Graphic Designer (IDEX) becomes "Needs you" (no pay shown), 5 skipped for location.
 - Next: a week of live runs while she reviews the Sheet. Then add Instahyre search results, since the recommended feed has few product design roles.
 - Idea: Instahyre's recommended feed is mostly visual and graphic roles. Its job search and "Similar jobs" show many more Product Designer roles in Bengaluru. Next step after the first live apply: also read search results for her titles.
 - Later: fill company-site forms (Greenhouse, Lever, Ashby) for jobs that leave Instahyre; Cutshort; Wellfound.
