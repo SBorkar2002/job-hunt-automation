@@ -30,23 +30,23 @@ Be one of the first applicants on every good-fit role. Recruiters often start fr
 | Column | Meaning |
 |---|---|
 | Found at | When the script first saw it |
-| Posted at | When the job or post went live |
+| Posted at | When the job or post went live. Blank for Instahyre: it doesn't show this |
 | Applied at | When the application went in |
-| Minutes to apply | Applied at minus Posted at |
+| Minutes to apply | Applied at minus Posted at. Blank when Posted at is unknown |
 | Company | |
 | Role | Position applied for |
 | Location / mode | City, remote, hybrid |
-| Applicants | Count when applied, if shown |
+| Applicants | Count when applied, if shown. Instahyre doesn't show it |
 | Job link | |
 | Post link | Hiring post, if it came from one |
 | Recruiter / poster | Name and profile link, if known |
-| Resume version | |
-| Note used | Cover note version |
+| Resume version | Which resume went out. Instahyre one-click uses the resume on her Instahyre profile |
+| Note used | The exact note sent, or "None" when the site didn't ask for one |
 | Action | Applied, Needs you, Skipped |
 | Status | Applied, Viewed, Replied, Interview, Offer, Rejected, No reply |
 | Response at | When she heard back |
 | Follow-up on | Date to nudge |
-| Notes | |
+| Notes | Track (product, visual, art, brand, graphic), experience asked, pay if shown, or the reason for Needs you |
 
 ## Hard limits
 

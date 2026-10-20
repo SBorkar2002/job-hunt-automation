@@ -64,6 +64,8 @@ if (INSPECT) mkdirSync(debugDir, { recursive: true });
 const counts = { found: 0, skipped: 0, applied: 0, needsYou: 0 };
 const skips = {};
 const log = (...a) => console.log(...a);
+// Sheets reads "2026-10-20 09:42:05" as a date in any locale, in the Sheet's own time zone (IST).
+const istNow = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const pause = () => sleep((minGapSeconds + Math.random() * minGapSeconds) * 1000);
 
@@ -131,6 +133,7 @@ async function fillForm(page, job) {
       const note = noteFor(job, SITE);
       if (!note) return `Form asks for a note and the ${job.track} note isn't approved yet`;
       await el.fill(note);
+      job.noteSent = note;
       continue;
     }
     const field = FIELDS.find(f => f.re.test(label));
@@ -157,6 +160,11 @@ async function applyTo(page, job) {
   if (exp) job.minYears = Number(exp[1]);
   job.payTop = payTopLpa(header);
   job.payChecked = true;
+  // Who posted it, e.g. "Sanjana S" then "Recruiter at Multi Recruit". Best effort.
+  const fullText = await page.locator('body').innerText();
+  const poster = fullText.match(/Posted by ([^\n]{2,40})\n([^\n]{2,80})/) || header.match(/\n([A-Z][A-Za-z.' ]{1,40})\n((?:Recruiter|HR|Talent|Hiring|CEO|CTO|COO|Founder|Co-?founder|Head|Director|Manager|Design)[^\n]{0,60} at [^\n]{1,60})/);
+  if (poster) job.poster = `${poster[1].trim()}, ${poster[2].trim()}`;
+  job.details = [`track: ${job.track}`, exp && `${exp[1]}-${exp[2]} years`, job.payTop != null && `pay up to ${job.payTop} LPA`].filter(Boolean).join(' · ');
   const fit = fits(job);
   if (!fit.ok) return fit.needs ? { needs: fit.reason } : { skip: fit.reason };
 
@@ -241,7 +249,15 @@ try {
       job.track = fit.track;
       log(`  fits: ${label} (${fit.track})`);
       const result = await applyTo(page, job);
-      const row = { ...job, note: noteVersion(job), resume: config.resumeVersion, postedAt: job.postedAt || '' };
+      // Instahyre's one-click apply sends the resume on your Instahyre profile and no note,
+      // unless a form asks for one. The row says exactly what went out.
+      const row = {
+        ...job,
+        resume: 'Instahyre profile resume',
+        note: job.noteSent ? `${noteVersion(job)}: ${job.noteSent}` : 'None (one-click apply, no note asked)',
+        postedAt: job.postedAt || '',
+        notes: job.details || '',
+      };
 
       if (result.skip) { counts.skipped++; const k = /pay/.test(result.skip) ? 'pay' : 'experience'; skips[k] = (skips[k] || 0) + 1; log(`  skip: ${label} (${result.skip})`); await page.goto(URLS.opportunities, { waitUntil: 'domcontentloaded' }); continue; }
       if (result.stop) { log(`STOP: ${result.stop}`); await needsYou(row, result.stop); break; }
@@ -251,7 +267,7 @@ try {
         counts.applied++;
         (state.days[today] ||= []).push(key);
         state.handled[key] = 'applied';
-        await logRow(TAB, { ...row, action: 'Applied', status: 'Applied', appliedAt: new Date().toISOString() }, { dryRun: DRY });
+        await logRow(TAB, { ...row, action: 'Applied', status: 'Applied', appliedAt: istNow() }, { dryRun: DRY });
         log(`  APPLIED: ${label}`);
       }
       saveState();
