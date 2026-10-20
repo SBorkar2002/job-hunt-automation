@@ -19,10 +19,15 @@ const LIST = 'https://wellfound.com/jobs';
 const feed = new Map();
 let feedSeen = false;
 
-// "₹2.5L – ₹3.5L • No equity" -> 3.5 (LPA). Other currencies: null (shown in notes, not used for rules).
-export function payTop(comp) {
-  const m = (comp || '').match(/₹\s*([\d.]+)\s*L\s*[–-]\s*₹\s*([\d.]+)\s*L/i) || (comp || '').match(/₹\s*([\d.]+)\s*L/i);
-  return m ? Number(m[2] || m[1]) : null;
+// "₹2.5L – ₹3.5L • No equity" -> 3.5 (LPA). "₹75,000 – ₹1.5L" mixes units (monthly? yearly?),
+// so it counts as unclear. Other currencies: null (kept in the pay text only).
+export function readPay(comp) {
+  const part = (comp || '').split('•')[0];
+  const amounts = [...part.matchAll(/₹\s*([\d.,]+)\s*(L|Cr|k)?/gi)];
+  if (!amounts.length) return { payTop: null, payUnclear: false };
+  if (amounts.some(a => !a[2])) return { payTop: null, payUnclear: true };
+  const lpa = a => Number(a[1].replace(/,/g, '')) * ({ l: 1, cr: 100, k: 0.01 }[a[2].toLowerCase()]);
+  return { payTop: lpa(amounts.at(-1)), payUnclear: false };
 }
 
 function collect(url, req, body) {
@@ -43,7 +48,7 @@ function collect(url, req, body) {
         postedAt: j.liveStartAt ? istNow(new Date(j.liveStartAt * 1000)) : '',
         postedHoursAgo: j.liveStartAt ? (Date.now() / 1000 - j.liveStartAt) / 3600 : null,
         pay: j.compensation || '',
-        payTop: payTop(j.compensation),
+        ...readPay(j.compensation),
         external: Boolean(j.atsSource),
         appliedHere: Boolean(j.currentUserApplied),
       });
@@ -136,13 +141,13 @@ const site = {
     return { needs: 'Clicked Send application but could not confirm it went through. Please check' };
   },
 
-  // Applied: the job page no longer offers Apply and shows it as applied.
-  // Provisional until the first live application shows exactly what the page says.
+  // Applied (proven 20 Oct): the job page shows "✓ Applied" and no Apply button.
+  // The menu also says "Applied", so the check needs the tick.
   async isApplied(page, job) {
     if (job) { await page.goto(job.jobLink, { waitUntil: 'domcontentloaded' }); await sleep(3000); }
     const text = await page.locator('body').innerText();
     const applyLeft = await page.getByRole('button', { name: /^apply( now)?$/i }).count();
-    return /\bapplied\b|application (sent|submitted)/i.test(text) && !applyLeft;
+    return /✓\s*Applied/.test(text) && !applyLeft;
   },
 
   // Exactly what went out, in plain words.

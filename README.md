@@ -174,3 +174,6 @@ Wellfound's terms ban "automated or non-automated harvesting, collection or scra
 - Apply: an Apply dialog with one question, "What interests you about working for this company?", then "Send application". The timer never writes this note: such jobs wait as "Needs note" until she approves a note drafted in this chat.
 - Applied: shown on the job page and in Applied > Ongoing. Exact wording confirmed at the first live application.
 - First dry run: 13 jobs seen, 0 matched (7 title, 6 older than 24 hours). Calibration with her is next.
+- Calibration with her (20 Oct): Wellfound freshness 14 days (`postedWithinHours` 336); every site skips jobs whose shown pay is under 6 LPA (`minPayLpa`); pay that is shown but unclear (for example "₹75,000 – ₹1.5L") goes to Needs you; "AI Design Engineer" added to product titles.
+- **First live Wellfound application, 20 Oct (her OK):** Intempt Technologies, AI Design Engineer, applied on her request outside the filters (posted 76 days ago) with the note she approved. Proof: Wellfound Applied list shows it as Pending; the job page shows "✓ Applied"; the row is in the Wellfound tab. `isApplied` now checks for that tick.
+- Next: add Wellfound to the hourly timer (cap 5 a day), and its section on the flow page.

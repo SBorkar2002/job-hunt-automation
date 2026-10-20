@@ -11,7 +11,10 @@
         "ux ui designer",
         "interaction designer",
         "ai product designer",
-        "genai product designer"
+        "genai product designer",
+        "ai design engineer",
+        "ai design enginner",
+        "design engineer"
       ],
       "note": "product"
     },
@@ -95,7 +98,8 @@
       "tab": "Wellfound",
       "dailyCap": 5,
       "minGapSeconds": 180,
-      "ref": "wellfound"
+      "ref": "wellfound",
+      "postedWithinHours": 336
     }
   },
   "notes": {
@@ -114,5 +118,6 @@
     "_about": "Same company and role on two sites. once: apply on the first only. after-days: apply on the second too if no reply after this many days. always: apply everywhere.",
     "mode": "after-days",
     "days": 7
-  }
+  },
+  "minPayLpa": 6
 }

@@ -28,6 +28,9 @@ const DRY = !LIVE;
 const INSPECT = args.includes('--inspect');
 const limitAt = args.indexOf('--limit');
 const LIMIT = limitAt >= 0 ? Number(args[limitAt + 1]) : Infinity;
+// --only <job id>: one job she asked for by name. Filters are skipped for it (caps and safety checks are not).
+const onlyAt = args.indexOf('--only');
+const ONLY = onlyAt >= 0 ? String(args[onlyAt + 1]) : null;
 const log = (...a) => console.log(...a);
 
 // ---------- login ----------
@@ -121,7 +124,7 @@ const rowFor = job => {
     ...job,
     resume: sent.resume,
     note: sent.note,
-    notes: [`track: ${job.track}`, job.experience, job.payTop != null && `pay up to ${job.payTop} LPA`].filter(Boolean).join(' · '),
+    notes: [ONLY && 'Applied on your request, outside the filters', `track: ${job.track}`, job.experience, job.pay ? `pay ${job.pay.split('•')[0].trim()}` : job.payTop != null && `pay up to ${job.payTop} LPA`].filter(Boolean).join(' · '),
   };
 };
 
@@ -182,13 +185,13 @@ try {
       }
     }
 
-    for (const job of jobs) {
+    for (const job of ONLY ? jobs.filter(j => j.id === ONLY) : jobs) {
       const label = `${job.company} | ${job.role} | ${job.location}`;
       const key = jobKey(job);
       if (s.handled[job.id]) { skip('done before'); continue; }
       if (job.jobLink && !s.crossWait[key] && await alreadyLogged(TAB, job.jobLink, { dryRun: DRY })) { skip('already in Sheet'); continue; }
 
-      const fit = fits(job);
+      const fit = ONLY ? { ok: true, track: fits(job, site.name).track || 'product' } : fits(job, site.name);
       if (!fit.ok) {
         const reason = fit.reason.startsWith('title') ? 'title' : fit.reason.split(' ')[0];
         skip(reason, `${label} (${fit.reason})`);
@@ -207,7 +210,7 @@ try {
       if (midBlock) { summary.health = midBlock.health; summary.errors.push(midBlock.msg); log(`STOP: ${midBlock.msg}`); break; }
       if (INSPECT) await capture(page, site.name, `job-${job.id}`);
 
-      const fit2 = fits(job);
+      const fit2 = ONLY ? { ok: true } : fits(job, site.name);
       if (!fit2.ok && !fit2.needs) { skip(fit2.reason.split(' ')[0] === 'pay' ? 'pay' : 'level', `${label} (${fit2.reason})`); s.handled[job.id] = 'skipped'; state.save(); continue; }
       summary.matched++;
       log(`  fits: ${label} (${fit.track})`);

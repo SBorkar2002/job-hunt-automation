@@ -18,7 +18,8 @@ export function payTopLpa(text) {
   return m ? Number(m[2] || m[1]) : null;
 }
 
-export function fits(job) {
+// site: optional site name, for per-site settings like postedWithinHours.
+export function fits(job, site) {
   const title = (job.role || '').toLowerCase();
   const company = (job.company || '').toLowerCase();
   const where = (job.location || '').toLowerCase();
@@ -31,7 +32,14 @@ export function fits(job) {
   if (bad && !dream) return { ok: false, reason: `title has "${bad}"` };
   if (where && !has(where, config.locations)) return { ok: false, reason: `location "${job.location}"` };
   if (job.minYears != null && job.minYears > config.maxYearsRequired && !dream) return { ok: false, reason: `needs ${job.minYears}+ years` };
-  if (job.postedHoursAgo != null && job.postedHoursAgo > config.postedWithinHours) return { ok: false, reason: `posted ${Math.round(job.postedHoursAgo)}h ago` };
+  const within = config.sites[site]?.postedWithinHours ?? config.postedWithinHours;
+  if (job.postedHoursAgo != null && job.postedHoursAgo > within) {
+    const d = job.postedHoursAgo / 24;
+    return { ok: false, reason: `posted ${d >= 2 ? Math.round(d) + ' days' : Math.round(job.postedHoursAgo) + ' hours'} ago` };
+  }
+  // Any role: pay shown below the floor is skipped; pay shown but unclear goes to her.
+  if (job.payUnclear) return { ok: false, needs: true, track, reason: `Pay unclear ("${job.pay}"). Apply yourself if it looks good` };
+  if (config.minPayLpa && job.payTop != null && job.payTop < config.minPayLpa && !dream) return { ok: false, track, reason: `pay up to ${job.payTop} LPA, under ${config.minPayLpa}` };
   const minPay = config.tracks[track].minPayLpa;
   if (minPay && job.payChecked) {
     if (job.payTop == null) return { ok: false, needs: true, track, reason: `${job.role}: no pay shown. Apply yourself if it looks good` };
