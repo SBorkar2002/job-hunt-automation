@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 SHEET_URL=$(grep -E '^SHEET_URL=' .env | cut -d= -f2-)
 SHEET_SECRET=$(grep -E '^SHEET_SECRET=' .env | cut -d= -f2-)
 DEPLOYMENT=$(echo "$SHEET_URL" | sed -E 's#.*/s/([^/]+)/exec#\1#')
-CLASP="npx --yes @google/clasp@3.4.1"
+CLASP="node_modules/.bin/clasp"
 
 if [ ! -f apps-script/appsscript.json ]; then
   # First time: fetch the project's manifest without touching our code.
