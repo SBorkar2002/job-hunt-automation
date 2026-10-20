@@ -124,11 +124,16 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - Built 20 Oct (branch `feat/instahyre`): Sheet endpoint, shared config and filters, cover note, Instahyre login helper and applier.
 - Proven 20 Oct: filters and note on sample jobs; Sheet connection (read check, wrong secret refused); login survives a Chrome restart; inspect dry run read all 11 recommended jobs from Instahyre's feed, skipped 10 with reasons (7 title, 3 location), found 1 fit (Foresight Labs, Product Designer UI/UX) and its "Apply now" button.
 - **First live application, 20 Oct (her OK):** Foresight Labs, Product Designer UI/UX. Instahyre shows "Application sent!", the Apply button is gone, and the row is in the Instahyre tab. No extra form appeared for this job. Fix made on the way: "Apply now" is a button inside a link, so the bot triggers the button itself.
-- Next: the hourly timer on the Mac (launchd), then a week of live runs at 10 a day while she reviews the Sheet.
+- **Hourly timer on, 20 Oct (her OK):** Instahyre runs live every hour from 8am to 11pm, up to 10 applications a day. Proven: a timed run started by itself, read 8 jobs, skipped 8 with reasons. A missed hour (Mac asleep) runs once on wake.
+- Next: a week of live runs while she reviews the Sheet. Then add Instahyre search results, since the recommended feed has few product design roles.
 - Idea: Instahyre's recommended feed is mostly visual and graphic roles. Its job search and "Similar jobs" show many more Product Designer roles in Bengaluru. Next step after the first live apply: also read search results for her titles.
 - Later: fill company-site forms (Greenhouse, Lever, Ashby) for jobs that leave Instahyre; Cutshort; Wellfound.
 
 ## How it runs and moving to another laptop
+
+- **Timer commands:** `npm run timer:status` (is it on, last log lines), `npm run timer:run-now`, `npm run timer:remove` (stop it). Log: `~/.jobbot/logs/instahyre.log`.
+- macOS blocks background jobs from reading the Documents folder, so `npm run timer:install` copies the scripts, `.env` and private answers to `~/.jobbot/app` and the timer runs that copy. **After any script change, run `npm run timer:install` again.**
+- The bot's Chrome window opens for a minute or two each hour. Don't close it mid-run; if you do, that run stops safely and the next hour tries again.
 
 - The scripts are Node.js programs on the Mac. They drive a real Chrome window with Playwright (a free library that clicks and types like a person). Nothing is injected into the websites.
 - The Sheet side is Google Apps Script, which lives in your Google account.

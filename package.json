@@ -7,7 +7,11 @@
     "check": "node --check shared/config.mjs && node --check shared/filters.mjs && node --check shared/sheet.mjs && node --check instahyre/login.mjs && node --check instahyre/apply.mjs",
     "instahyre:dry": "node instahyre/apply.mjs",
     "instahyre:inspect": "node instahyre/apply.mjs --inspect",
-    "instahyre:live": "node instahyre/apply.mjs --live"
+    "instahyre:live": "node instahyre/apply.mjs --live",
+    "timer:install": "bash scripts/timer.sh install instahyre",
+    "timer:remove": "bash scripts/timer.sh remove instahyre",
+    "timer:status": "bash scripts/timer.sh status instahyre",
+    "timer:run-now": "bash scripts/timer.sh run-now instahyre"
   },
   "dependencies": {
     "playwright": "1.48.2"

@@ -196,6 +196,7 @@ async function applyTo(page, job) {
 }
 
 // ---------- run ----------
+log(`\n=== ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} ===`);
 log(`Instahyre run: ${DRY ? 'DRY RUN (applies to nothing, logs nothing)' : 'LIVE'}${INSPECT ? ' + inspect' : ''}`);
 log(`Applied today: ${appliedToday()} of ${dailyCap}`);
 
