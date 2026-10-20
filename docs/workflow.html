@@ -120,7 +120,7 @@ p { margin: 0; }
   <header class="intro">
     <span class="eyebrow">Auto-apply, review in the Sheet</span>
     <h1>How one run works</h1>
-    <p>Every hour the script goes through Instahyre, Cutshort, Wellfound and LinkedIn, applies to fresh jobs that fit, and writes each one to your Sheet. You don't approve anything. You review the Sheet and tell this chat what to change.</p>
+    <p>Each site runs on its own every hour from 8am to 11pm: Instahyre on the hour, Wellfound at half past. The bot applies to fresh jobs that fit and writes each one to your Sheet. You review the Sheet and tell this chat what to change.</p>
     <div class="legend">
       <span class="tag mac">Your Mac</span>
       <span class="tag site">On the job site</span>
@@ -132,71 +132,76 @@ p { margin: 0; }
   <div class="flow" id="flow">
 
     <div class="node" data-where="mac"><div class="rail"><span class="dot">1</span></div>
-      <div class="card"><span class="tag mac">Your Mac</span><h3>A run starts every hour</h3>
-        <p>A timer on your Mac starts the script. It needs your Mac on, because your logins live only there.</p>
-        <div class="outs"><div class="out"><span class="tag stop">Mac off</span><span>That run is missed. The next run catches up on jobs from the last 24 hours.</span></div></div>
+      <div class="card"><span class="tag mac">Your Mac</span><h3>The site's timer starts a run</h3>
+        <p>Your logins live only on your Mac, so it needs to be on.</p>
+        <div class="outs"><div class="out"><span class="tag stop">Mac asleep</span><span>The run happens once when the Mac wakes.</span></div></div>
       </div></div>
 
     <div class="node" data-where="site"><div class="rail"><span class="dot">2</span></div>
-      <div class="card decision"><span class="tag site">On the job site</span><h3>Open the site, already logged in</h3>
-        <p>It uses its own Chrome window where you logged in once. Sites go in this order: Instahyre, Cutshort, Wellfound, LinkedIn.</p>
-        <div class="outs"><div class="out"><span class="tag you">Logged out or CAPTCHA</span><span>Stops on this site and adds a "Needs you" row. Moves to the next site.</span></div></div>
+      <div class="card decision"><span class="tag site">Start-of-run check</span><h3>Logged in, and the page looks right?</h3>
+        <p>Opens the site in its own Chrome and reads the job list from the site's own data.</p>
+        <div class="outs"><div class="out"><span class="tag you">No</span><span>Stops this site, saves a capture, and the Health tab turns red with what to do.</span></div></div>
       </div></div>
 
     <div class="node" data-where="site"><div class="rail"><span class="dot">3</span></div>
-      <div class="card"><span class="tag site">On the job site</span><h3>Search for fresh jobs</h3>
-        <p>Your titles and cities, posted in the last 24 hours, newest first. Hiring posts on LinkedIn too.</p>
+      <div class="card"><span class="tag site">Needs you jobs</span><h3>Did you apply to any yourself?</h3>
+        <p>If a job you were asked to handle now shows as applied, its row turns to Applied.</p>
       </div></div>
 
     <div class="node" data-where="sheet"><div class="rail"><span class="dot">4</span></div>
-      <div class="card decision"><span class="tag sheet">Checks the Sheet</span><h3>Already applied?</h3>
-        <div class="outs"><div class="out"><span class="tag stop">Yes</span><span>Skipped. You never apply to the same job twice.</span></div></div>
+      <div class="card decision"><span class="tag sheet">Each job</span><h3>Handled before?</h3>
+        <div class="outs"><div class="out"><span class="tag stop">Yes</span><span>Skipped. Never applies twice.</span></div></div>
       </div></div>
 
     <div class="node" data-where="site"><div class="rail"><span class="dot">5</span></div>
-      <div class="card decision"><span class="tag site">Reads the job</span><h3>Does it fit you?</h3>
-        <p>Right title and level (0 to 2 years), your cities or remote, no words like senior or lead, not on your avoid list.</p>
-        <div class="outs"><div class="out"><span class="tag stop">No</span><span>Skipped, not logged.</span></div></div>
+      <div class="card decision"><span class="tag site">Filters</span><h3>Does it fit you?</h3>
+        <p>Your titles, 0 to 2 years, Bengaluru or remote, fresh enough, no senior or lead, pay shown not under 6 LPA.</p>
+        <div class="outs">
+          <div class="out"><span class="tag stop">No</span><span>Skipped, with the reason in the Runs tab.</span></div>
+          <div class="out"><span class="tag you">Pay unclear</span><span>A Needs you row, so you decide.</span></div>
+        </div>
       </div></div>
 
-    <div class="node" data-where="site"><div class="rail"><span class="dot">6</span></div>
-      <div class="card decision"><span class="tag site">Safety cap</span><h3>Daily limit reached for this site?</h3>
-        <p>A cap per site per day keeps it looking like a person and protects your accounts.</p>
-        <div class="outs"><div class="out"><span class="tag stop">Yes</span><span>Stops on this site until tomorrow.</span></div></div>
+    <div class="node" data-where="sheet"><div class="rail"><span class="dot">6</span></div>
+      <div class="card decision"><span class="tag sheet">Other sites</span><h3>Applied to the same job elsewhere?</h3>
+        <div class="outs"><div class="out"><span class="tag stop">Yes</span><span>Waits. Applies here only if there is no reply after 7 days.</span></div></div>
       </div></div>
 
     <div class="node" data-where="site"><div class="rail"><span class="dot">7</span></div>
       <div class="card decision"><span class="tag site">On the job site</span><h3>Apply</h3>
-        <p>Fills in your saved answers, the cover note, your resume and portfolio link, then submits.</p>
+        <p>Up to the site's daily cap, minutes apart, like a person.</p>
         <div class="outs">
-          <div class="out"><span class="tag you">Question it can't answer</span><span>Doesn't guess or submit. Adds a "Needs you" row.</span></div>
-          <div class="out"><span class="tag you">LinkedIn hiring post</span><span>No apply button, so it drafts a message and adds a "Needs you" row. You send it.</span></div>
+          <div class="out"><span class="tag you">Needs a note</span><span>Waits until you approve a note drafted in this chat.</span></div>
+          <div class="out"><span class="tag you">Unknown question</span><span>Doesn't guess. A Needs you row.</span></div>
         </div>
       </div></div>
 
     <div class="node" data-where="sheet"><div class="rail"><span class="dot">8</span></div>
-      <div class="card"><span class="tag sheet">Google Sheet</span><h3>Writes a row on the site's tab</h3>
-        <p>Company, role, job link, when it was posted, when it applied, minutes after posting, applicants, note used. Status: Applied.</p>
-        <span class="loop">Back to step 4 for the next job. After the last site, the run ends.</span>
+      <div class="card"><span class="tag sheet">Google Sheet</span><h3>Row on the site's tab</h3>
+        <p>Company, role, link, when posted, when applied, exactly what went out (resume, note or None).</p>
       </div></div>
 
-    <div class="node" data-where="you"><div class="rail"><span class="dot">9</span></div>
-      <div class="card"><span class="tag you">You, when you like</span><h3>Review the Sheet</h3>
-        <p>See where it applied. Do the "Needs you" rows. Update the status when a company replies.</p>
+    <div class="node" data-where="sheet"><div class="rail"><span class="dot">9</span></div>
+      <div class="card"><span class="tag sheet">Runs and Health</span><h3>The run reports itself</h3>
+        <p>One row in Runs (seen, applied, skipped and why). The site's Health line: OK or red, today's count, next run.</p>
       </div></div>
 
     <div class="node" data-where="you"><div class="rail"><span class="dot">10</span></div>
-      <div class="card"><span class="tag you">You, in this chat</span><h3>Ask for changes</h3>
-        <p>"Stop applying to X", "add this title", "change the note". I update the script and the next run uses it.</p>
+      <div class="card"><span class="tag you">You</span><h3>Review and ask for changes</h3>
+        <p>Check Health, do the Needs you rows, update Status when companies reply. Tell this chat what to change.</p>
       </div></div>
   </div>
 
-  <div class="section"><span class="eyebrow">Step 7, per site</span><h2>What "apply" means on each site</h2></div>
+  <div class="section"><span class="eyebrow">Per site</span><h2>What's different on each site</h2></div>
   <div class="sites">
-    <div class="siterow"><h3>Instahyre</h3><p>Clicks Interested on the opportunity.</p></div>
-    <div class="siterow"><h3>Cutshort</h3><p>Clicks Apply and adds your note.</p></div>
-    <div class="siterow"><h3>Wellfound</h3><p>Fills the short apply form with your note.</p></div>
-    <div class="siterow"><h3>LinkedIn <span class="tag risk">Ban risk</span></h3><p>Easy Apply only. Jobs that send you to a company website get a "Needs you" row with the link. LinkedIn bans accounts that auto-apply, even slowly. Your call before I build this one.</p></div>
+    <div class="siterow"><h3>Instahyre <span class="tag site">On the hour · 10 a day</span></h3>
+      <p>Reads your recommended jobs. "Apply now" is one click and sends your Instahyre profile resume, no note. Applied shows as "Application sent!". No post dates, so no freshness rule.</p></div>
+    <div class="siterow"><h3>Wellfound <span class="tag site">At :30 · 5 a day</span></h3>
+      <p>Reads your saved search (Product Designer, Bengaluru, full time). Jobs from the last 14 days. Sends your Wellfound profile plus a note to "What interests you about this company?", which you approve here first. Applied shows as "✓ Applied". Login is Google, done in a normal Chrome window.</p></div>
+    <div class="siterow"><h3>Cutshort, Naukri, others <span class="tag stop">Not built</span></h3>
+      <p>Each new site goes through the same steps: terms and your OK, profile check, recon, filter check with you, one live application, then the timer.</p></div>
+    <div class="siterow"><h3>LinkedIn <span class="tag risk">Skipped</span></h3>
+      <p>Not automated: LinkedIn bans accounts that do this.</p></div>
   </div>
 </main>
 

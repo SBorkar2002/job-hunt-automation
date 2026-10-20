@@ -92,14 +92,16 @@
       "tab": "Instahyre",
       "dailyCap": 10,
       "minGapSeconds": 90,
-      "ref": "instahyre"
+      "ref": "instahyre",
+      "runMinute": 0
     },
     "wellfound": {
       "tab": "Wellfound",
       "dailyCap": 5,
       "minGapSeconds": 180,
       "ref": "wellfound",
-      "postedWithinHours": 336
+      "postedWithinHours": 336,
+      "runMinute": 30
     }
   },
   "notes": {

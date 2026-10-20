@@ -111,7 +111,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - `shared/config.json`: titles (tracks), excluded words, cities, caps, notes, `crossSite` rule. Edit this to change filters.
 - `shared/filters.mjs`, `shared/sheet.mjs`: fit rules; Sheet calls with retries and an offline queue.
 - `apps-script/Tracker.gs`: the Sheet side. Health tab (one line per site, red when something is wrong), a tab per site, Runs tab (one row per run). Format defined in code; `setupTracker` applies it and fixes old rows.
-- `scripts/timer.sh`: hourly timer, 8am to 11pm. `scripts/sheet-deploy.sh` (`npm run sheet:deploy`): pushes the Apps Script with clasp and reapplies the format.
+- `scripts/timer.sh`: hourly timer per site, 8am to 11pm, at each site's `runMinute` (Instahyre :00, Wellfound :30). `npm run timer:install` installs both. `scripts/sheet-deploy.sh` (`npm run sheet:deploy`): pushes the Apps Script with clasp and reapplies the format.
 - `docs/workflow.html`: the flow page (one section per site, to be updated with Wellfound).
 - `private/answers.local.json`: private answers (git ignored).
 
@@ -176,4 +176,5 @@ Wellfound's terms ban "automated or non-automated harvesting, collection or scra
 - First dry run: 13 jobs seen, 0 matched (7 title, 6 older than 24 hours). Calibration with her is next.
 - Calibration with her (20 Oct): Wellfound freshness 14 days (`postedWithinHours` 336); every site skips jobs whose shown pay is under 6 LPA (`minPayLpa`); pay that is shown but unclear (for example "₹75,000 – ₹1.5L") goes to Needs you; "AI Design Engineer" added to product titles.
 - **First live Wellfound application, 20 Oct (her OK):** Intempt Technologies, AI Design Engineer, applied on her request outside the filters (posted 76 days ago) with the note she approved. Proof: Wellfound Applied list shows it as Pending; the job page shows "✓ Applied"; the row is in the Wellfound tab. `isApplied` now checks for that tick.
-- Next: add Wellfound to the hourly timer (cap 5 a day), and its section on the flow page.
+- **Wellfound on the timer, 20 Oct (her OK):** runs at :30 each hour (Instahyre at :00), 8am to 11pm, cap 5 a day. Proven: a timer run at 15:26 logged to the Runs tab and the Health line (OK, 1 of 5); `npm run status` shows both sites. Flow page updated with a section per site.
+- Next: a week of live runs on both sites while she reviews the Sheet. Then Cutshort through the same new-site steps.

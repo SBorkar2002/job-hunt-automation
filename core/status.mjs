@@ -21,7 +21,7 @@ for (const name of sites) {
   const active = istHour() >= 9 && istHour() < 23;
   if (health === 'OK' && good && active && ageH(good.runAt) > 3) health = 'No good run in 3 hours';
   console.log(`${health === 'OK' ? 'OK ' : '!! '} ${label}: ${health}`);
-  console.log(`    timer ${timer} · last run ${last?.runAt || '-'} · last good ${good?.runAt || '-'} · next ${nextRunIst()}`);
+  console.log(`    timer ${timer} · last run ${last?.runAt || '-'} · last good ${good?.runAt || '-'} · next ${nextRunIst(config.sites[name]?.runMinute || 0)}`);
   console.log(`    today ${last?.appliedToday ?? 0} of ${config.sites[name]?.dailyCap ?? '?'} · last run: seen ${last?.seen ?? 0}, applied ${last?.applied ?? 0}, needs you ${last?.needsYou ?? 0}`);
   if (last?.errors?.length) console.log(`    problem: ${last.errors.join('; ')}`);
 }

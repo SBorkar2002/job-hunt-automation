@@ -8,9 +8,9 @@
     "instahyre:inspect": "node core/run.mjs instahyre --inspect",
     "instahyre:live": "node core/run.mjs instahyre --live",
     "status": "node core/status.mjs",
-    "timer:install": "bash scripts/timer.sh install instahyre",
-    "timer:remove": "bash scripts/timer.sh remove instahyre",
-    "timer:status": "bash scripts/timer.sh status instahyre",
+    "timer:install": "bash scripts/timer.sh install instahyre && bash scripts/timer.sh install wellfound",
+    "timer:remove": "bash scripts/timer.sh remove instahyre && bash scripts/timer.sh remove wellfound",
+    "timer:status": "bash scripts/timer.sh status instahyre; bash scripts/timer.sh status wellfound",
     "timer:run-now": "bash scripts/timer.sh run-now instahyre",
     "check": "for f in core/*.mjs sites/*.mjs shared/*.mjs; do node --check $f || exit 1; done",
     "sheet:deploy": "bash scripts/sheet-deploy.sh",
@@ -18,7 +18,9 @@
     "sheet:peek": "node scripts/peek.mjs",
     "wellfound:login": "node core/run.mjs wellfound --login",
     "wellfound:dry": "node core/run.mjs wellfound",
-    "wellfound:inspect": "node core/run.mjs wellfound --inspect"
+    "wellfound:inspect": "node core/run.mjs wellfound --inspect",
+    "timer:run-now:wellfound": "bash scripts/timer.sh run-now wellfound",
+    "wellfound:live": "node core/run.mjs wellfound --live"
   },
   "dependencies": {
     "playwright": "1.48.2"

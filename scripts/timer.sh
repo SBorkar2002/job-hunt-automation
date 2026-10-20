@@ -22,8 +22,9 @@ case "$ACTION" in
     mkdir -p "$APP"
     rsync -a --delete --exclude .git --exclude '*/debug' "$REPO/" "$APP/"
     chmod 700 "$APP"
+    MINUTE=$(python3 -c "import json;print(json.load(open('$REPO/shared/config.json'))['sites']['$SITE'].get('runMinute',0))")
     HOURS=""
-    for h in $(seq 8 23); do HOURS+="<dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>0</integer></dict>"; done
+    for h in $(seq 8 23); do HOURS+="<dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>$MINUTE</integer></dict>"; done
     cat > "$PLIST" <<PL
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -39,7 +40,7 @@ case "$ACTION" in
 PL
     launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
     launchctl bootstrap "gui/$(id -u)" "$PLIST"
-    echo "Installed: $SITE runs every hour, 8am to 11pm, from $APP. Log: $LOGDIR/$SITE.log" ;;
+    echo "Installed: $SITE runs every hour at :$(printf %02d $MINUTE), 8am to 11pm, from $APP. Log: $LOGDIR/$SITE.log" ;;
   remove)
     launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
     rm -f "$PLIST"; echo "Removed the $SITE timer." ;;

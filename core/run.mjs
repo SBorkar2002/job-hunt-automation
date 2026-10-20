@@ -84,7 +84,7 @@ const summary = {
   runAt: istNow(), site: site.label, mode: DRY ? 'dry run' : 'live',
   seen: 0, matched: 0, applied: 0, needsYou: 0, youApplied: 0,
   needsTop: '', skipped: {}, nearMisses: [], errors: [], health: 'OK',
-  appliedToday: state.appliedToday(), cap: dailyCap, nextRun: nextRunIst(),
+  appliedToday: state.appliedToday(), cap: dailyCap, nextRun: nextRunIst(config.sites[site.name].runMinute || 0),
 };
 const skip = (reason, label) => {
   summary.skipped[reason] = (summary.skipped[reason] || 0) + 1;
