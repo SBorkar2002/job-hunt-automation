@@ -90,6 +90,12 @@
       "dailyCap": 10,
       "minGapSeconds": 90,
       "ref": "instahyre"
+    },
+    "wellfound": {
+      "tab": "Wellfound",
+      "dailyCap": 5,
+      "minGapSeconds": 180,
+      "ref": "wellfound"
     }
   },
   "notes": {

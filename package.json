@@ -15,7 +15,10 @@
     "check": "for f in core/*.mjs sites/*.mjs shared/*.mjs; do node --check $f || exit 1; done",
     "sheet:deploy": "bash scripts/sheet-deploy.sh",
     "clasp:login": "clasp login",
-    "sheet:peek": "node scripts/peek.mjs"
+    "sheet:peek": "node scripts/peek.mjs",
+    "wellfound:login": "node core/run.mjs wellfound --login",
+    "wellfound:dry": "node core/run.mjs wellfound",
+    "wellfound:inspect": "node core/run.mjs wellfound --inspect"
   },
   "dependencies": {
     "playwright": "1.48.2"

@@ -159,3 +159,9 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 Instahyre's Terms of Use say users must not "use ... automated software ... to crawl or spider any part of the Platform" and must not "harvest or scrape" content. So auto-applying breaks their terms, the same kind of rule as LinkedIn. Likely worst case: Instahyre restricts or closes her account. Ways to lower the risk: a small daily cap, slow pacing, her own Chrome profile, stop at any CAPTCHA or check. **Her decision (20 Oct 2026): yes, she accepts the account risk.** Cap: 10 applications a day, 90 to 180 seconds apart. Cover note draft approved.
 
 Also from Instahyre's help centre: an application cannot be withdrawn once sent. So the first live run applies to one job only.
+
+## Wellfound terms (checked 20 Oct 2026)
+
+Wellfound's terms ban "automated or non-automated harvesting, collection or scraping" of content, and any automated system that puts "more ... load" on its servers "than a human can reasonably produce". Worst case: the account is suspended. Milder than Instahyre's, as long as the bot moves at a person's pace.
+
+**Her decision (20 Oct 2026): yes, she accepts the account risk.** Cap: 5 applications a day, at least 3 minutes apart. Raise after a clean week. Wellfound treats the profile as the application, so the profile check comes first.
