@@ -30,12 +30,54 @@ const limitAt = args.indexOf('--limit');
 const LIMIT = limitAt >= 0 ? Number(args[limitAt + 1]) : Infinity;
 const log = (...a) => console.log(...a);
 
+// ---------- login ----------
+// Sites that sign in with Google open in plain Chrome (not driven by the bot), because Google
+// refuses sign-in in a browser a script controls. She logs in herself. Some sites (Wellfound)
+// use a login cookie that Chrome drops when it restarts, so once she is in, the script asks
+// that same Chrome to keep the site's login cookies for 30 days. They stay inside the bot's
+// Chrome profile; nothing is copied out or written anywhere else.
+if (args.includes('--login') && site.plainLogin) {
+  const { spawn } = await import('node:child_process');
+  const port = 9333;
+  const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    [`--user-data-dir=${profileDir(site.name)}`, `--remote-debugging-port=${port}`, '--no-first-run', '--no-default-browser-check', site.loginUrl], { stdio: 'ignore' });
+  log(`Log in to ${site.label} in the Chrome window that opened (Google sign-in works here). It closes by itself once you are in.`);
+  await sleep(3000);
+  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+  const bctx = browser.contexts()[0];
+  const host = new URL(site.listUrl).host.replace(/^www\./, '');
+  let ok = false;
+  for (let i = 0; i < 300 && chrome.exitCode === null; i++) { // up to 15 minutes
+    await sleep(3000);
+    const tab = bctx.pages().find(p => p.url().includes(host) && !site.loggedOut(p.url()));
+    if (tab && await site.isLoggedIn(tab).catch(() => false)) { ok = true; break; }
+  }
+  if (ok) {
+    await sleep(3000);
+    const keep = (await bctx.cookies()).filter(c => c.domain.replace(/^\./, '').endsWith(host) && c.expires === -1);
+    await bctx.addCookies(keep.map(c => ({ ...c, expires: Math.floor(Date.now() / 1000) + 30 * 86400 })));
+    log(`Kept ${keep.length} login cookie(s) for 30 days.`);
+  }
+  await browser.close().catch(() => {});
+  chrome.kill('SIGTERM');
+  await sleep(2000);
+  if (!ok) { log(`Not logged in yet. Run npm run ${site.name}:login again.`); process.exit(0); }
+}
+
 const ctx = await chromium.launchPersistentContext(profileDir(site.name), {
   channel: 'chrome', headless: false, viewport: args.includes('--login') ? null : { width: 1280, height: 900 },
 });
 const page = ctx.pages()[0] || await ctx.newPage();
 
-// ---------- login ----------
+if (args.includes('--login') && site.plainLogin) {
+  await page.goto(site.listUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(4000);
+  const ok = await site.isLoggedIn(page);
+  await ctx.close().catch(() => {});
+  log(ok ? 'Logged in and saved. The login survived a Chrome restart.' : `Still logged out after a restart. Run npm run ${site.name}:login again.`);
+  process.exit(0);
+}
+
 if (args.includes('--login')) {
   await page.goto(site.loginUrl);
   log(`Log in to ${site.label} in the window that opened. It closes by itself once you are in.`);
