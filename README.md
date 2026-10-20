@@ -178,3 +178,7 @@ Wellfound's terms ban "automated or non-automated harvesting, collection or scra
 - **First live Wellfound application, 20 Oct (her OK):** Intempt Technologies, AI Design Engineer, applied on her request outside the filters (posted 76 days ago) with the note she approved. Proof: Wellfound Applied list shows it as Pending; the job page shows "✓ Applied"; the row is in the Wellfound tab. `isApplied` now checks for that tick.
 - **Wellfound on the timer, 20 Oct (her OK):** runs at :30 each hour (Instahyre at :00), 8am to 11pm, cap 5 a day. Proven: a timer run at 15:26 logged to the Runs tab and the Health line (OK, 1 of 5); `npm run status` shows both sites. Flow page updated with a section per site.
 - Next: a week of live runs on both sites while she reviews the Sheet. Then Cutshort through the same new-site steps.
+
+## Cutshort (checked 20 Oct 2026): skipped
+
+Cutshort's terms say "You may not use any automated process or service to access and/or use the Service" and that misuse "will lead to permanent account suspension". **Her decision (20 Oct): skip Cutshort.** Naukri goes next instead.
