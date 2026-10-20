@@ -165,3 +165,12 @@ Also from Instahyre's help centre: an application cannot be withdrawn once sent.
 Wellfound's terms ban "automated or non-automated harvesting, collection or scraping" of content, and any automated system that puts "more ... load" on its servers "than a human can reasonably produce". Worst case: the account is suspended. Milder than Instahyre's, as long as the bot moves at a person's pace.
 
 **Her decision (20 Oct 2026): yes, she accepts the account risk.** Cap: 5 applications a day, at least 3 minutes apart. Raise after a clean week. Wellfound treats the profile as the application, so the profile check comes first.
+
+### Wellfound recon (20 Oct 2026, nothing applied)
+
+- Login: Google sign-in, so it opens in plain Chrome (`npm run wellfound:login`); the bot reads that login through the Mac's real keychain. Proven: login survives a Chrome restart.
+- Profile: Wellfound reports it complete (no pending steps). Wellfound sends the profile as the application.
+- Job list: her saved search (Product Designer, Bengaluru, full time, remote open), read from the page's own data (GraphQL `JobSearchResultsX`): company, title, pay, locations, remote, posted time, already applied.
+- Apply: an Apply dialog with one question, "What interests you about working for this company?", then "Send application". The timer never writes this note: such jobs wait as "Needs note" until she approves a note drafted in this chat.
+- Applied: shown on the job page and in Applied > Ongoing. Exact wording confirmed at the first live application.
+- First dry run: 13 jobs seen, 0 matched (7 title, 6 older than 24 hours). Calibration with her is next.
