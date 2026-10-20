@@ -32,34 +32,16 @@ const log = (...a) => console.log(...a);
 
 // ---------- login ----------
 // Sites that sign in with Google open in plain Chrome (not driven by the bot), because Google
-// refuses sign-in in a browser a script controls. She logs in herself. Some sites (Wellfound)
-// use a login cookie that Chrome drops when it restarts, so once she is in, the script asks
-// that same Chrome to keep the site's login cookies for 30 days. They stay inside the bot's
-// Chrome profile; nothing is copied out or written anywhere else.
+// refuses sign-in in a browser a script controls. She logs in herself and quits Chrome;
+// the bot then reuses that saved login (same profile, same Mac keychain).
 if (args.includes('--login') && site.plainLogin) {
   const { spawn } = await import('node:child_process');
-  const port = 9333;
   const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    [`--user-data-dir=${profileDir(site.name)}`, `--remote-debugging-port=${port}`, '--no-first-run', '--no-default-browser-check', site.loginUrl], { stdio: 'ignore' });
+    [`--user-data-dir=${profileDir(site.name)}`, '--no-first-run', '--no-default-browser-check', site.loginUrl], { stdio: 'ignore' });
   log(`Log in to ${site.label} in the Chrome window that opened (Google sign-in works here).`);
   log('When you see your name or photo on the site, quit that Chrome with Cmd + Q.');
-  await sleep(3000);
-  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
-  const bctx = browser.contexts()[0];
-  const host = new URL(site.listUrl).host.replace(/^www\./, '');
-  // Until she quits: any login cookie that would vanish on restart is kept for 30 days instead.
-  let kept = new Set();
-  const keepCookies = async () => {
-    const all = await bctx.cookies().catch(() => []);
-    const fresh = all.filter(c => c.domain.replace(/^\./, '').endsWith(host) && c.expires === -1);
-    if (!fresh.length) return;
-    await bctx.addCookies(fresh.map(c => ({ ...c, expires: Math.floor(Date.now() / 1000) + 30 * 86400 }))).catch(() => {});
-    fresh.forEach(c => kept.add(c.name));
-  };
-  const timer = setInterval(keepCookies, 2000);
-  await new Promise(resolve => { chrome.on('exit', resolve); browser.on('disconnected', resolve); });
-  clearInterval(timer);
-  log(`Chrome closed. Login cookies kept: ${kept.size ? [...kept].join(', ') : 'none needed'}. Checking the login after a restart...`);
+  await new Promise(resolve => chrome.on('exit', resolve));
+  log('Chrome closed. Checking the login after a restart...');
   await sleep(2000);
 }
 
