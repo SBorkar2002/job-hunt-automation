@@ -156,6 +156,8 @@ function addJob(tab, job) {
 
   // Minutes to apply fills itself once Applied at is set.
   const r = sh.getLastRow();
+  // Adding a row resets date formats, so set them again on this row.
+  ['Found at', 'Posted at', 'Applied at', 'Response at'].forEach(n => sh.getRange(r, col(COLUMNS, n)).setNumberFormat('dd mmm yyyy, hh:mm'));
   sh.getRange(r, col(COLUMNS, 'Minutes to apply'))
     .setFormulaR1C1('=IF(OR(R[0]C3="",R[0]C2=""),"",ROUND((R[0]C3-R[0]C2)*1440))');
   return true;
@@ -219,6 +221,7 @@ function updateJob_(tab, job) {
   set('Action', job.action);
   set('Status', job.status);
   set('Applied at', job.appliedAt);
+  if (job.appliedAt) sh.getRange(r, col(COLUMNS, 'Applied at')).setNumberFormat('dd mmm yyyy, hh:mm');
   set('Resume version', job.resume);
   set('Note used', job.note);
   if (job.notes) {
@@ -258,7 +261,11 @@ function logRun_(run) {
   const skipped = Object.keys(run.skipped || {}).map(k => run.skipped[k] + ' ' + k).join(', ') || 'None';
   const near = (run.nearMisses || []).filter((v, i, a) => a.indexOf(v) === i).join(', ') || 'None';
   const needs = run.needsYou ? run.needsYou + (run.needsTop ? ' (' + run.needsTop + ')' : '') : 0;
-  ss.getSheetByName('Runs').appendRow([when(run.runAt), run.site, run.seen, run.matched, run.applied, needs, skipped, near, (run.errors || []).join('; ') || 'None', when(run.nextRun)]);
+  const runs = ss.getSheetByName('Runs');
+  runs.appendRow([when(run.runAt), run.site, run.seen, run.matched, run.applied, needs, skipped, near, (run.errors || []).join('; ') || 'None', when(run.nextRun)]);
+  const rr = runs.getLastRow();
+  runs.getRange(rr, 1).setNumberFormat('dd mmm yyyy, hh:mm');
+  runs.getRange(rr, col(RUN_COLUMNS, 'Next run')).setNumberFormat('dd mmm, hh:mm');
 
   const sh = ss.getSheetByName('Health');
   const last = sh.getLastRow();
