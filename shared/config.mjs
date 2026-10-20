@@ -35,10 +35,16 @@ export function profileDir(site) {
   return dir;
 }
 
+// The cover note for a job's track. Returns null when that note isn't approved yet.
 export function noteFor(job, site) {
+  const key = config.tracks[job.track || 'product']?.note || 'product';
+  const note = config.notes[key];
+  if (!note?.approved) return null;
   const portfolio = `${config.portfolio}/?ref=${config.sites[site].ref}`;
-  return config.note.text
+  return note.text
     .replaceAll('{company}', job.company || 'there')
     .replaceAll('{role}', job.role || 'design')
     .replaceAll('{portfolio}', portfolio);
 }
+
+export const noteVersion = job => config.notes[config.tracks[job.track || 'product']?.note || 'product']?.version;

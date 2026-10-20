@@ -11,8 +11,8 @@ import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
-import { config, answers, profileDir, noteFor, ROOT } from '../shared/config.mjs';
-import { fits } from '../shared/filters.mjs';
+import { config, answers, profileDir, noteFor, noteVersion, ROOT } from '../shared/config.mjs';
+import { fits, payTopLpa } from '../shared/filters.mjs';
 import { alreadyLogged, logRow } from '../shared/sheet.mjs';
 
 const SITE = 'instahyre';
@@ -128,7 +128,9 @@ async function fillForm(page, job) {
     });
     const tag = await el.evaluate(e => e.tagName);
     if (tag === 'TEXTAREA' && /(note|message|cover|why|about)/i.test(label + ' textarea')) {
-      await el.fill(noteFor(job, SITE));
+      const note = noteFor(job, SITE);
+      if (!note) return `Form asks for a note and the ${job.track} note isn't approved yet`;
+      await el.fill(note);
       continue;
     }
     const field = FIELDS.find(f => f.re.test(label));
@@ -149,14 +151,14 @@ async function applyTo(page, job) {
   const why = await blocked(page);
   if (why) return { stop: why };
 
-  // The job header shows experience like "1-5 Years". Recheck fit with it.
+  // The job page shows experience like "1-5 Years" and sometimes pay. Recheck fit with both.
   const header = (await page.locator('body').innerText()).slice(0, 1500);
   const exp = header.match(/(\d+)\s*-\s*(\d+)\s*Years/i);
-  if (exp) {
-    job.minYears = Number(exp[1]);
-    const fit = fits(job);
-    if (!fit.ok) return { skip: fit.reason };
-  }
+  if (exp) job.minYears = Number(exp[1]);
+  job.payTop = payTopLpa(header);
+  job.payChecked = true;
+  const fit = fits(job);
+  if (!fit.ok) return fit.needs ? { needs: fit.reason } : { skip: fit.reason };
 
   // The visible "Apply now" is a button inside a link that catches the mouse, so we trigger the button itself.
   const apply = page.getByRole('button', { name: TEXT.apply }).first();
@@ -236,14 +238,15 @@ try {
       if (appliedToday() >= dailyCap) { log(`Daily cap of ${dailyCap} reached. Stopping.`); break; }
       if (counts.applied >= LIMIT) { log(`Limit of ${LIMIT} for this run reached. Stopping.`); break; }
 
-      log(`  fits: ${label}`);
+      job.track = fit.track;
+      log(`  fits: ${label} (${fit.track})`);
       const result = await applyTo(page, job);
-      const row = { ...job, note: config.note.version, resume: config.resumeVersion, postedAt: job.postedAt || '' };
+      const row = { ...job, note: noteVersion(job), resume: config.resumeVersion, postedAt: job.postedAt || '' };
 
-      if (result.skip) { counts.skipped++; skips['experience'] = (skips['experience'] || 0) + 1; log(`  skip: ${label} (${result.skip})`); await page.goto(URLS.opportunities, { waitUntil: 'domcontentloaded' }); continue; }
+      if (result.skip) { counts.skipped++; const k = /pay/.test(result.skip) ? 'pay' : 'experience'; skips[k] = (skips[k] || 0) + 1; log(`  skip: ${label} (${result.skip})`); await page.goto(URLS.opportunities, { waitUntil: 'domcontentloaded' }); continue; }
       if (result.stop) { log(`STOP: ${result.stop}`); await needsYou(row, result.stop); break; }
       if (result.needs) { await needsYou(row, result.needs); state.handled[key] = 'needs you'; }
-      if (result.dry) { log(`  [dry run] would apply with note: "${noteFor(job, SITE)}"`); }
+      if (result.dry) { log(`  [dry run] would apply. Note if a form asks: ${noteFor(job, SITE) ? `"${noteFor(job, SITE)}"` : `(${job.track} note not approved yet)`}`); }
       if (result.applied) {
         counts.applied++;
         (state.days[today] ||= []).push(key);
