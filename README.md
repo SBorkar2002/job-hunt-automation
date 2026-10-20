@@ -104,14 +104,18 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 
 ## What exists
 
-- `apps-script/Tracker.gs`: shared setup. Creates the Sheet and its tabs (columns, status dropdowns, auto "Minutes to apply"), and logs jobs without duplicates (`addJob`).
-- `apps-script/Tracker.gs` also has `doPost`: the endpoint the Mac scripts use to check for and log rows, guarded by a secret.
-- `shared/config.json`: titles, excluded words, cities, caps, cover note (draft, needs her OK). Edit this to change filters.
-- `shared/filters.mjs`: decides if a job fits and gives the reason. `shared/sheet.mjs`: logs rows (prints only in dry run).
-- `instahyre/login.mjs` (`npm run instahyre:login`): opens Instahyre in the bot's own Chrome profile for her to log in once.
-- `instahyre/apply.mjs`: the Instahyre applier. `npm run instahyre:dry` (reads and decides, applies to nothing), `npm run instahyre:inspect` (dry run plus page captures in `instahyre/debug/`, git ignored), `npm run instahyre:live -- --limit 1` (one real application). Stops on logout or any CAPTCHA. Jobs that send her to a company website are marked "Needs you" for now.
-- `private/answers.local.json`: private answers (git ignored). Blank until she fills it.
-- `docs/workflow.html`: the auto-apply workflow for LinkedIn, Instahyre, Cutshort and Wellfound. Live page: https://claude.ai/artifact/9No5UMQKk65HViTicyM6SB
+- `core/run.mjs`: the shared runner. Every site plugs in five parts (login, jobs, details, apply, isApplied); the runner does filters, Sheet rows, caps and pacing, the Needs you recheck, the same-job-on-two-sites rule, the start-of-run check and the run summary.
+- `sites/instahyre.mjs`: Instahyre's five parts and what we know about its pages.
+- `core/status.mjs` (`npm run status`): health per site on the Mac.
+- `core/state.mjs`, `core/util.mjs`, `core/forms.mjs`: memory in `~/.jobbot/state`, helpers, the shared form filler.
+- `shared/config.json`: titles (tracks), excluded words, cities, caps, notes, `crossSite` rule. Edit this to change filters.
+- `shared/filters.mjs`, `shared/sheet.mjs`: fit rules; Sheet calls with retries and an offline queue.
+- `apps-script/Tracker.gs`: the Sheet side. Health tab (one line per site, red when something is wrong), a tab per site, Runs tab (one row per run). Format defined in code; `setupTracker` applies it and fixes old rows.
+- `scripts/timer.sh`: hourly timer, 8am to 11pm. `scripts/sheet-deploy.sh` (`npm run sheet:deploy`): pushes the Apps Script with clasp and reapplies the format.
+- `docs/workflow.html`: the flow page (one section per site, to be updated with Wellfound).
+- `private/answers.local.json`: private answers (git ignored).
+
+**Commands:** `npm run instahyre:dry` (reads and decides, applies to nothing), `npm run instahyre:inspect` (same, plus page captures in `~/.jobbot/debug/instahyre/`, newest kept), `npm run instahyre:live -- --limit 1`, `npm run instahyre:login`, `npm run status`.
 
 ## Setup steps for Sejal (about 10 minutes, once)
 
@@ -134,7 +138,9 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - Fixed 20 Oct: an 8:13am run right after wake couldn't reach the Sheet ("fetch failed") and stopped early. Sheet calls now retry for about 50 seconds; rows that still can't be sent wait in `~/.jobbot/state/pending-rows.json` and go out on the next run.
 - Live 20 Oct (PR #2 merged, timer refreshed): title tracks, pay rule for graphic roles, second note. Dry run on her feed: 2D Artist (OpEzee) and Visual Designer (Plaza) would be applied to, Graphic Designer (IDEX) becomes "Needs you" (no pay shown), 5 skipped for location.
 - Built 20 Oct (branch `feat/sheet-format-and-recheck`): every tab wraps text and centers it vertically, with set column widths. Each run rechecks "Needs you" jobs; if she applied herself (Instahyre shows "Application sent!"), the row flips to Applied with a note. Proven in a dry run: IDEX India, which she applied to by hand, was detected. Needs her to paste the new `Tracker.gs`, run `setupTracker`, and deploy a new version of the web app.
-- Next: a week of live runs while she reviews the Sheet. Then add Instahyre search results, since the recommended feed has few product design roles.
+- **Shared runner, 20 Oct (studio plan agreed with her):** Instahyre reshaped into five parts on branch `refactor/shared-runner`. Added: start-of-run check (stops a site whose page changed, saves a capture, keeps only the newest 12), cross-site rule (`crossSite`: apply once; apply on a second site only if no reply after 7 days; the 4 applications so far are remembered), `npm run status`, Health and Runs tabs, old-row migration, clasp deploys. Proven: dry run on her feed (seen 5, skipped 5 for location, health OK). Waiting: her clasp login, then `npm run sheet:deploy`, merge and timer refresh.
+- Next: Wellfound through the new-site steps (terms, profile check, recon, calibration, notes, one live apply, timer). Cap about 5 a day.
+- Next after that: a week of live runs while she reviews the Sheet. Then add Instahyre search results, since the recommended feed has few product design roles.
 - Idea: Instahyre's recommended feed is mostly visual and graphic roles. Its job search and "Similar jobs" show many more Product Designer roles in Bengaluru. Next step after the first live apply: also read search results for her titles.
 - Later: fill company-site forms (Greenhouse, Lever, Ashby) for jobs that leave Instahyre; Cutshort; Wellfound.
 

@@ -3,15 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "instahyre:login": "node instahyre/login.mjs",
-    "check": "node --check shared/config.mjs && node --check shared/filters.mjs && node --check shared/sheet.mjs && node --check instahyre/login.mjs && node --check instahyre/apply.mjs",
-    "instahyre:dry": "node instahyre/apply.mjs",
-    "instahyre:inspect": "node instahyre/apply.mjs --inspect",
-    "instahyre:live": "node instahyre/apply.mjs --live",
+    "instahyre:login": "node core/run.mjs instahyre --login",
+    "instahyre:dry": "node core/run.mjs instahyre",
+    "instahyre:inspect": "node core/run.mjs instahyre --inspect",
+    "instahyre:live": "node core/run.mjs instahyre --live",
+    "status": "node core/status.mjs",
     "timer:install": "bash scripts/timer.sh install instahyre",
     "timer:remove": "bash scripts/timer.sh remove instahyre",
     "timer:status": "bash scripts/timer.sh status instahyre",
-    "timer:run-now": "bash scripts/timer.sh run-now instahyre"
+    "timer:run-now": "bash scripts/timer.sh run-now instahyre",
+    "check": "for f in core/*.mjs sites/*.mjs shared/*.mjs; do node --check $f || exit 1; done",
+    "sheet:deploy": "bash scripts/sheet-deploy.sh"
   },
   "dependencies": {
     "playwright": "1.48.2"

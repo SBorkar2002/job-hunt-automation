@@ -103,5 +103,10 @@
       "approved": true,
       "text": "Hi {company} team, I'm Sejal, a designer who works across product design, illustration and visual design. I'd love to bring that to the {role} role. My work is here: {portfolio}"
     }
+  },
+  "crossSite": {
+    "_about": "Same company and role on two sites. once: apply on the first only. after-days: apply on the second too if no reply after this many days. always: apply everywhere.",
+    "mode": "after-days",
+    "days": 7
   }
 }

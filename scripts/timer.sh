@@ -20,7 +20,7 @@ APP="$HOME/.jobbot/app"
 case "$ACTION" in
   install)
     mkdir -p "$APP"
-    rsync -a --delete --exclude .git --exclude 'instahyre/debug' "$REPO/" "$APP/"
+    rsync -a --delete --exclude .git --exclude '*/debug' "$REPO/" "$APP/"
     chmod 700 "$APP"
     HOURS=""
     for h in $(seq 8 23); do HOURS+="<dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>0</integer></dict>"; done
@@ -29,7 +29,7 @@ case "$ACTION" in
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>$LABEL</string>
-  <key>ProgramArguments</key><array><string>$NODE</string><string>$APP/$SITE/apply.mjs</string><string>--live</string></array>
+  <key>ProgramArguments</key><array><string>$NODE</string><string>$APP/core/run.mjs</string><string>$SITE</string><string>--live</string></array>
   <key>WorkingDirectory</key><string>$APP</string>
   <key>StartCalendarInterval</key><array>$HOURS</array>
   <key>StandardOutPath</key><string>$LOGDIR/$SITE.log</string>
