@@ -20,7 +20,9 @@
     "wellfound:dry": "node core/run.mjs wellfound",
     "wellfound:inspect": "node core/run.mjs wellfound --inspect",
     "timer:run-now:wellfound": "bash scripts/timer.sh run-now wellfound",
-    "wellfound:live": "node core/run.mjs wellfound --live"
+    "wellfound:live": "node core/run.mjs wellfound --live",
+    "doctor": "node core/doctor.mjs",
+    "fill": "node core/fill.mjs"
   },
   "dependencies": {
     "playwright": "1.48.2"

@@ -8,6 +8,29 @@ This file is the single tracker: requirements, answers, what exists, how to run 
 
 Be one of the first applicants on every good-fit role. Recruiters often start from the top of the list, so speed after posting is the main lever. Fit still matters, so filters stay strict.
 
+## Fix it yourself (start here)
+
+Run this first. It checks every part and prints the exact command for anything wrong:
+
+```
+npm run doctor
+```
+
+| You see | What it means | Do this |
+|---|---|---|
+| Health tab red: "Login expired" | A site logged you out | `npm run instahyre:login` or `npm run wellfound:login`, log in, done |
+| Health tab red: "Bot check" | The site showed a CAPTCHA | Open the site in the bot's Chrome (`npm run <site>:login`) and finish it yourself |
+| Health tab red: "Needs fix: ..." | The site's page changed | Ask the automation chat: paste the red line |
+| "No good run in 3 hours" | Mac was asleep or off | Keep the Mac on and plugged in during the day |
+| Doctor: "timer is off" or "older copy" | Timer not installed or out of date | `npm run timer:install` |
+| Doctor: "clasp is logged out" | Apps Script deploys need you | `npm run clasp:login` |
+| Doctor: "Sheet not reachable" | Wi-Fi, or the secret changed | Check Wi-Fi; if "bad secret", run `makeSecret` in Apps Script and update `.env` |
+| Wellfound row says "Needs note" | Wellfound asks a note per job | In the automation chat: "draft notes" |
+| A good job on a company site | You want to apply fast | `npm run fill -- <job link>`: fills the form, you check and click Submit |
+| Stop everything | Holiday, or found a job | `npm run timer:remove` (and in Apps Script, delete the timers under Triggers) |
+
+Other checks: `npm run status` (site health on the Mac), `npm run sheet:peek` (Health and Runs tabs as the Sheet shows them).
+
 ## Links
 
 - Sheet (Job hunt tracker): https://docs.google.com/spreadsheets/d/1tj34leK-HVtZBhOoofL1ZZaOrc-_eXlE5gfaafy1E68/edit
@@ -194,3 +217,10 @@ Cutshort's terms say "You may not use any automated process or service to access
 - **Sunday 7pm, weekly summary** email to her.
 - First real run (21 Oct): 45 Glassdoor, 20 LinkedIn (5 of them her own applications), 7 Indeed rows after tightening (no "Sr" titles, no duplicates, place must match). Naukri emails so far are not job alerts.
 - Mac helpers: `npm run sheet:deploy`, `npm run sheet:peek`; web app actions `mail`, `mailpeek`, `mailraw`, `tail`, `resetalerts`, `triggers`.
+
+## Career pages and form helper (built 22 Oct 2026)
+
+- **Career-page watcher** (`apps-script/Pages.gs`, hourly in the cloud): reads public job boards (Lever, Greenhouse, Ashby; no login, meant to be read) for the companies in `careerPages` in `shared/config.json`: CRED, Meesho, Zeta, Razorpay, Groww, InMobi, Figma, Atlys, Sarvam AI to start. Matching roles land on the Career pages tab as Needs you. Add a company: its board name goes in the list, then `npm run sheet:deploy`. Needs her to run `authorize` once more (permission to fetch web pages).
+- **Form helper** (`npm run fill -- <link>`): opens the form, attaches the resume, fills name, email, phone, company, location, LinkedIn, portfolio, pay, notice and start date, drafts the note, and lists required fields left. It never submits. If a thank-you page appears before she closes the window, the job is logged as Applied. Proven on a live Lever form (Meesho): 10 fields filled, resume attached, only "years of experience" left for her.
+- **Doctor** (`npm run doctor`): proven: all checks pass on 22 Oct.
+- Open: years of experience (freelance start date) for forms and filters.

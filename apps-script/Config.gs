@@ -85,5 +85,55 @@ const CONFIG = {
     "work from home",
     "wfh"
   ],
-  "minPayLpa": 6
+  "minPayLpa": 6,
+  "careerPages": {
+    "_about": "Public job boards the cloud script checks hourly (no login, meant to be read). ats: lever, greenhouse or ashby; slug is the board's name in its link.",
+    "boards": [
+      {
+        "company": "CRED",
+        "ats": "lever",
+        "slug": "cred"
+      },
+      {
+        "company": "Meesho",
+        "ats": "lever",
+        "slug": "meesho"
+      },
+      {
+        "company": "Zeta",
+        "ats": "lever",
+        "slug": "zeta"
+      },
+      {
+        "company": "Razorpay",
+        "ats": "greenhouse",
+        "slug": "razorpaysoftwareprivatelimited"
+      },
+      {
+        "company": "Groww",
+        "ats": "greenhouse",
+        "slug": "groww"
+      },
+      {
+        "company": "InMobi",
+        "ats": "greenhouse",
+        "slug": "inmobi"
+      },
+      {
+        "company": "Figma",
+        "ats": "greenhouse",
+        "slug": "figma"
+      },
+      {
+        "company": "Atlys",
+        "ats": "ashby",
+        "slug": "atlys"
+      },
+      {
+        "company": "Sarvam AI",
+        "ats": "ashby",
+        "slug": "sarvam"
+      }
+    ]
+  }
 };

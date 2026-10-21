@@ -288,9 +288,10 @@ function weeklySummary() {
 
 /** Creates the timers (safe to run again: it replaces them). */
 function installTriggers() {
-  const keep = ['checkAlerts', 'checkReplies', 'followUps', 'healthAlert', 'weeklySummary'];
+  const keep = ['checkAlerts', 'checkReplies', 'followUps', 'healthAlert', 'weeklySummary', 'checkPages'];
   ScriptApp.getProjectTriggers().filter(t => keep.indexOf(t.getHandlerFunction()) >= 0).forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('checkAlerts').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('checkPages').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('checkReplies').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('healthAlert').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('followUps').timeBased().everyDays(1).atHour(9).inTimezone('Asia/Kolkata').create();
@@ -301,6 +302,7 @@ function installTriggers() {
 /** Run once from the editor: Google asks for Gmail and email permission, then the timers start. */
 function authorize() {
   GmailApp.getInboxUnreadCount();
+  UrlFetchApp.fetch('https://api.lever.co/v0/postings/cred?mode=json&limit=1');
   MailApp.getRemainingDailyQuota();
   Logger.log('Permissions granted. Timers: ' + installTriggers().join(', '));
 }
