@@ -182,3 +182,15 @@ Wellfound's terms ban "automated or non-automated harvesting, collection or scra
 ## Cutshort (checked 20 Oct 2026): skipped
 
 Cutshort's terms say "You may not use any automated process or service to access and/or use the Service" and that misuse "will lead to permanent account suspension". **Her decision (20 Oct): skip Cutshort.** Naukri goes next instead.
+
+## Gmail side (built 21 Oct 2026, runs in Google's cloud)
+
+`apps-script/Mail.gs`, on timers she approved by running `authorize` once:
+- **Hourly, job alert emails** from Glassdoor, LinkedIn, Naukri and Indeed: each job goes through the same title, level and place rules (`apps-script/Config.gs`, written from `shared/config.json` at deploy) and a duplicate check across all tabs, then lands as Needs you on that site's tab. The bot never visits those sites, so no terms are broken.
+- **Her own LinkedIn applications** ("your application was sent to ...") are logged as Applied on the LinkedIn tab.
+- **Hourly, replies:** emails from companies she applied to set Status to Replied, Interview, Rejected or Viewed.
+- **Daily 9am, follow-ups:** Applied 7+ days with no reply gets a row in the Follow-ups tab with a drafted nudge. She sends it.
+- **Hourly, health alert:** a site red for 3+ hours (9am to 11pm) sends her one email (at most every 6 hours).
+- **Sunday 7pm, weekly summary** email to her.
+- First real run (21 Oct): 45 Glassdoor, 20 LinkedIn (5 of them her own applications), 7 Indeed rows after tightening (no "Sr" titles, no duplicates, place must match). Naukri emails so far are not job alerts.
+- Mac helpers: `npm run sheet:deploy`, `npm run sheet:peek`; web app actions `mail`, `mailpeek`, `mailraw`, `tail`, `resetalerts`, `triggers`.

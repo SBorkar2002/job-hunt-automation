@@ -193,6 +193,9 @@ function doPost(e) {
     if (a === 'setup') { setupTracker(); return out({ ok: true }); }
     if (a === 'peek') return out({ ok: true, health: shown_('Health', 20), runs: shown_('Runs', 3) });
     if (a === 'mail') return out({ ok: true, result: { alerts: checkAlerts(), replies: checkReplies(), followUps: followUps() } });
+    if (a === 'resetalerts') return out({ ok: true, result: resetAlertRows_() });
+    if (a === 'tail') return out({ ok: true, result: shown_(body.tab, body.job && body.job.n || 15) });
+    if (a === 'mailraw') return out({ ok: true, result: mailRaw_() });
     if (a === 'mailpeek') return out({ ok: true, result: peekMail_() });
     if (a === 'triggers') return out({ ok: true, result: installTriggers() });
     return out({ ok: false, error: 'unknown action' });

@@ -35,53 +35,60 @@ function fits_(job) {
   if (!track) return { ok: false, reason: 'title' };
   const bad = CONFIG.excludeWords.find(w => t.indexOf(w) >= 0);
   if (bad) return { ok: false, reason: 'title has "' + bad + '"' };
-  if (where && LOCATION_HINT.test(where) && !CONFIG.locations.some(l => where.indexOf(l) >= 0)) return { ok: false, reason: 'location' };
+  // Alert emails always put a place in this field. "India" alone may mean remote, so it passes.
+  if (where && where.trim() !== 'india' && !CONFIG.locations.some(l => where.indexOf(l) >= 0)) return { ok: false, reason: 'location' };
   return { ok: true, track: track };
 }
 
 /* ---------- 1. job alert emails ---------- */
 
-// Reads one alert email's text: every job link, with the few lines just above it as context.
-function parseAlert_(plain, html, linkRe) {
+// Reads one alert email's text. Each job is the block of lines that ends with its link.
+// Layouts (seen 21 Oct 2026):
+//   Glassdoor: company, title, place, [pay], [Easy Apply], age, link
+//   Indeed:    title, "company - place" (or company, place), [salary], [job type], link
+//   LinkedIn:  title, company, place, ..., link
+const NOISE = /^(easy apply|easily apply|responsive employer|urgently hiring|hiring multiple candidates|just posted|new|actively (hiring|recruiting)|promoted|be an early applicant|\d+\s*(d|h|days?|hours?)( ago)?|\d+ (connections?|school alumni|applicants?)|salary:|job type:|work setting:|view job:?|apply now:?|.*employer est.*|.*\ba (year|month)$|.*per (year|month)$|[₹$€£].*)$/i;
+
+function parseAlert_(plain, html, linkRe, tab) {
+  const lines = String(plain || '').split(/\r?\n/).map(s => s.replace(/[\u200b-\u200f\u2060\ufeff\u034f]/g, '').trim()).filter(Boolean);
   const jobs = [];
-  const text = plain || '';
-  const lines = text.split(/\r?\n/).map(s => s.trim());
-  lines.forEach((line, i) => {
-    const links = line.match(linkRe) || [];
-    if (!links.length) return;
-    const before = [];
-    for (let k = i - 1; k >= 0 && before.length < 5; k--) {
-      const l = lines[k];
-      if (!l || /^https?:/.test(l) || linkRe.test(l)) { linkRe.lastIndex = 0; if (before.length) break; else continue; }
-      linkRe.lastIndex = 0;
-      before.unshift(l.replace(/[​-‍]/g, ''));
-    }
-    jobs.push({ link: links[0], context: before.concat([line.replace(linkRe, '').trim()]).filter(String) });
+  let block = [];
+  lines.forEach(line => {
+    linkRe.lastIndex = 0;
+    const links = line.match(linkRe);
+    linkRe.lastIndex = 0;
+    if (!links) { block.push(line); return; }
+    const before = line.replace(linkRe, '').replace(/[<>:]+$/, '').trim();
+    linkRe.lastIndex = 0;
+    if (before && !NOISE.test(before)) block.push(before);
+    const ctx = block.filter(l => !NOISE.test(l) && l.length <= 100 && !/^\[image/i.test(l));
+    if (ctx.length) jobs.push(toJob_(ctx, links[0], tab));
+    block = [];
   });
-  linkRe.lastIndex = 0;
-  // HTML fallback: link text is usually the job title.
-  if (!jobs.length && html) {
-    const a = /<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let m;
-    while ((m = a.exec(html))) {
-      linkRe.lastIndex = 0;
-      if (!linkRe.test(m[1])) continue;
-      const label = m[2].replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-      if (label) jobs.push({ link: m[1].replace(/&amp;/g, '&'), context: [label] });
-    }
-  }
-  linkRe.lastIndex = 0;
-  return jobs.map(j => toJob_(j));
+  return jobs.filter(j => j.role && !/\bcreate$/i.test(j.role) && j.company);
 }
 
-// Picks role, company and location out of the context lines.
-function toJob_(j) {
-  const allTitles = Object.keys(CONFIG.tracks).filter(k => k.charAt(0) !== '_').reduce((a, k) => a.concat(CONFIG.tracks[k].titles), []);
-  const ctx = j.context.filter(l => l.length < 140);
-  const roleLine = ctx.find(l => allTitles.some(t => l.toLowerCase().indexOf(t) >= 0)) || ctx.find(l => /design|ux|ui\b|artist|illustrat/i.test(l)) || ctx[0] || '';
-  const loc = ctx.find(l => l !== roleLine && LOCATION_HINT.test(l) && l.length < 80) || '';
-  const company = ctx.find(l => l !== roleLine && l !== loc && !/view job|apply|easy apply|new|actively|promoted|\d+ (applicants|days?|hours?)/i.test(l)) || '';
-  return { role: roleLine.replace(/\s+/g, ' ').trim(), company: company.replace(/\s+/g, ' ').trim(), location: loc.trim(), jobLink: cleanLink_(j.link) };
+function toJob_(ctx, link, tab) {
+  let role = '', company = '', location = '';
+  const tail = ctx.slice(-3);
+  if (tab === 'Glassdoor') {
+    // company, title, place
+    [company, role, location] = tail.length === 3 ? tail : ['', tail[0] || '', tail[1] || ''];
+  } else if (tab === 'Indeed') {
+    const t = ctx.slice(-2);
+    const dash = t[1] && t[1].match(/^(.*?)\s+-\s+(.*)$/);
+    if (dash && LOCATION_HINT.test(dash[2])) { role = t[0]; company = dash[1]; location = dash[2]; }
+    else { const u = ctx.slice(-3); role = u[0] || ''; company = u[1] || ''; location = u[2] || ''; }
+  } else {
+    // LinkedIn: title, company, place (first lines of the block)
+    const c = ctx.slice(-4);
+    role = c.find(l => /design|ux|ui\b|artist|illustrat|product/i.test(l)) || c[0] || '';
+    const rest = c.slice(c.indexOf(role) + 1);
+    company = rest[0] || '';
+    location = rest.find(l => LOCATION_HINT.test(l)) || rest[1] || '';
+  }
+  company = company.replace(/\s+\d(\.\d)?\s*★$/, '');
+  return { role: role.trim(), company: company.trim(), location: location.trim(), jobLink: cleanLink_(link) };
 }
 
 // Drops tracking parameters so the same job from two emails matches.
@@ -98,12 +105,23 @@ function checkAlerts() {
     const threads = GmailApp.search(src.query + ' newer_than:3d -label:' + SEEN.replace('/', '-'), 0, 30);
     threads.forEach(th => {
       th.getMessages().forEach(msg => {
-        const jobs = parseAlert_(msg.getPlainBody(), msg.getBody(), src.link);
+        const jobs = parseAlert_(msg.getPlainBody(), msg.getBody(), src.link, src.tab);
+        // "Sejal, your application was sent to X": her own LinkedIn application, logged as Applied.
+        const sent = src.tab === 'LinkedIn' && msg.getSubject().match(/application was sent to (.+)$/i);
+        if (sent && jobs[0] && !hasJob_('LinkedIn', jobs[0].jobLink)) {
+          addJob('LinkedIn', Object.assign(jobs.shift(), {
+            company: sent[1].trim(), postedAt: '', action: 'Applied', status: 'Applied',
+            appliedAt: Utilities.formatDate(msg.getDate(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss'),
+            resume: 'Your LinkedIn application', note: 'None', notes: 'You applied on LinkedIn (from the confirmation email)',
+          }));
+        } else if (sent) jobs.shift();
         jobs.forEach(job => {
           const fit = fits_(job);
           if (!fit.ok) return;
           if (!job.jobLink || hasJob_(src.tab, job.jobLink)) return;
-          const elsewhere = lookup_(job.company, job.role).filter(r => /Applied|Replied|Interview|Offer/.test(r.status));
+          const known = lookup_(job.company, job.role);
+          const elsewhere = known.filter(r => /Applied|Replied|Interview|Offer/.test(r.status));
+          if (known.length && !elsewhere.length) return; // already listed (same company and role), no need twice
           const note = elsewhere.length ? 'Already applied via ' + elsewhere[0].tab + '. ' : '';
           addJob(src.tab, Object.assign(job, {
             postedAt: Utilities.formatDate(msg.getDate(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss'),
@@ -136,11 +154,12 @@ function checkReplies() {
     const from = msg.getFrom();
     const subject = msg.getSubject();
     const body = msg.getPlainBody().slice(0, 4000);
-    if (alertFrom.test(from) && !/application|interview|status/i.test(subject)) { th.addLabel(done); return; }
+    if (/application was sent to/i.test(subject)) { th.addLabel(done); return; } // her own confirmation
+    if (alertFrom.test(from) && !/application was viewed|interview|status/i.test(subject)) { th.addLabel(done); return; }
     const hay = (from + ' ' + subject + ' ' + body).toLowerCase();
     const row = applied.find(r => r.companyKey.length > 2 && (hay.indexOf(r.companyKey) >= 0));
     if (!row) return;
-    let status = 'Replied';
+    let status = /application was viewed/i.test(subject) ? 'Viewed' : 'Replied';
     if (/unfortunately|not (be )?moving forward|other candidates|decided to (pursue|move)|not a fit|regret to inform|position has been filled/i.test(hay)) status = 'Rejected';
     else if (/interview|schedule a (call|chat)|your availability|next round|assignment|take-?home/i.test(hay)) status = 'Interview';
     const sh = sheet_().getSheetByName(row.tab);
@@ -273,6 +292,33 @@ function authorize() {
 function peekMail_() {
   return ALERT_SOURCES.map(src => {
     const th = GmailApp.search(src.query + ' newer_than:30d', 0, 2);
-    return { tab: src.tab, emails: th.map(t => { const m = t.getMessages()[0]; return { from: m.getFrom(), subject: m.getSubject(), date: String(m.getDate()), parsed: parseAlert_(m.getPlainBody(), m.getBody(), src.link).slice(0, 6) }; }) };
+    return { tab: src.tab, emails: th.map(t => { const m = t.getMessages()[0]; return { from: m.getFrom(), subject: m.getSubject(), date: String(m.getDate()), parsed: parseAlert_(m.getPlainBody(), m.getBody(), src.link, src.tab).slice(0, 8) }; }) };
   });
+}
+
+/** For the Mac: the raw text of the latest alert email per source, to tune the reader. */
+function mailRaw_() {
+  return ALERT_SOURCES.map(src => {
+    const th = GmailApp.search(src.query + ' newer_than:30d', 0, 1);
+    if (!th.length) return { tab: src.tab, text: '' };
+    const m = th[0].getMessages()[0];
+    return { tab: src.tab, text: m.getPlainBody().slice(0, 2500) };
+  });
+}
+
+/** Clears the rows made from alert emails in the last few days and lets them be read again. */
+function resetAlertRows_() {
+  const removed = {};
+  ['Glassdoor', 'LinkedIn', 'Indeed', 'Naukri'].forEach(tab => {
+    const sh = sheet_().getSheetByName(tab);
+    for (let r = sh.getLastRow(); r >= 2; r--) {
+      const notes = String(sh.getRange(r, col(COLUMNS, 'Notes')).getValue());
+      if (/alert email|You applied on LinkedIn/.test(notes)) { sh.deleteRow(r); removed[tab] = (removed[tab] || 0) + 1; }
+    }
+  });
+  [SEEN, REPLY_SEEN].forEach(name => {
+    const l = GmailApp.getUserLabelByName(name);
+    if (l) GmailApp.search('label:' + name.replace('/', '-') + ' newer_than:4d', 0, 100).forEach(t => t.removeLabel(l));
+  });
+  return removed;
 }

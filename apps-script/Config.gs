@@ -72,7 +72,11 @@ const CONFIG = {
     "5+ years",
     "6+ years",
     "7+ years",
-    "8+ years"
+    "8+ years",
+    "sr ",
+    "sr product",
+    "sr ux",
+    "sr designer"
   ],
   "locations": [
     "bengaluru",
