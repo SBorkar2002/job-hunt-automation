@@ -84,5 +84,6 @@ const CONFIG = {
     "remote",
     "work from home",
     "wfh"
-  ]
+  ],
+  "minPayLpa": 6
 };

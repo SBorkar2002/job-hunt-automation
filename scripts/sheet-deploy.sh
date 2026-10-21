@@ -17,7 +17,7 @@ if [ ! -f apps-script/appsscript.json ]; then
 fi
 
 # Filters for the Gmail side, from the same config the Mac uses.
-node -e "const c=require('./shared/config.json'); require('fs').writeFileSync('apps-script/Config.gs', '// Written by scripts/sheet-deploy.sh from shared/config.json. Do not edit here.\\nconst CONFIG = ' + JSON.stringify({tracks:c.tracks, excludeWords:c.excludeWords, locations:c.locations}, null, 2) + ';\\n')"
+node -e "const c=require('./shared/config.json'); require('fs').writeFileSync('apps-script/Config.gs', '// Written by scripts/sheet-deploy.sh from shared/config.json. Do not edit here.\\nconst CONFIG = ' + JSON.stringify({tracks:c.tracks, excludeWords:c.excludeWords, locations:c.locations, minPayLpa:c.minPayLpa}, null, 2) + ';\\n')"
 $CLASP push --force
 $CLASP deploy --deploymentId "$DEPLOYMENT" --description "update $(date '+%Y-%m-%d %H:%M')"
 echo "Reapplying the Sheet format:"

@@ -27,12 +27,28 @@ const istNow_ = () => Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-
 
 /* ---------- filters (same rules as shared/filters.mjs) ---------- */
 
+// Yearly pay in LPA when the email makes it clear: "₹3L - ₹5L", "₹30,00,000 a year". Else null.
+function payLpa_(line) {
+  const l = String(line || '');
+  const lakh = l.match(/₹\s*([\d.]+)\s*L\b[^₹]*(?:₹\s*([\d.]+)\s*L\b)?/i);
+  if (lakh) return Number(lakh[2] || lakh[1]);
+  if (/a year|per (year|annum)/i.test(l)) {
+    const nums = (l.match(/₹\s*[\d,]+/g) || []).map(n => Number(n.replace(/[₹,\s]/g, '')));
+    if (nums.length) return Math.max.apply(null, nums) / 100000;
+  }
+  return null;
+}
+const GRAPHIC = /graphic|video edit|video creator|embroidery|social media (content|designer)/i;
+
 function fits_(job) {
   const t = String(job.role || '').toLowerCase();
   const where = String(job.location || '').toLowerCase();
   const tracks = Object.keys(CONFIG.tracks).filter(k => k.charAt(0) !== '_');
   const track = tracks.find(k => CONFIG.tracks[k].titles.some(x => t.indexOf(x) >= 0));
   if (!track) return { ok: false, reason: 'title' };
+  // Graphic and video roles only with clear pay of 8 LPA or more (her rule, 21 Oct).
+  if ((track === 'graphic' || GRAPHIC.test(t)) && !(job.payTop >= 8)) return { ok: false, reason: 'graphic without good pay' };
+  if (job.payTop != null && job.payTop < (CONFIG.minPayLpa || 0)) return { ok: false, reason: 'pay' };
   const bad = CONFIG.excludeWords.find(w => t.indexOf(w) >= 0);
   if (bad) return { ok: false, reason: 'title has "' + bad + '"' };
   // Alert emails always put a place in this field. "India" alone may mean remote, so it passes.
@@ -62,7 +78,8 @@ function parseAlert_(plain, html, linkRe, tab) {
     linkRe.lastIndex = 0;
     if (before && !NOISE.test(before)) block.push(before);
     const ctx = block.filter(l => !NOISE.test(l) && l.length <= 100 && !/^\[image/i.test(l));
-    if (ctx.length) jobs.push(toJob_(ctx, links[0], tab));
+    const payLine = block.find(l => /[₹]/.test(l)) || '';
+    if (ctx.length) jobs.push(Object.assign(toJob_(ctx, links[0], tab), { pay: payLine, payTop: payLpa_(payLine) }));
     block = [];
   });
   return jobs.filter(j => j.role && !/\bcreate$/i.test(j.role) && j.company);
