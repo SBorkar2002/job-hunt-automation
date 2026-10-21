@@ -16,7 +16,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config, profileDir } from '../shared/config.mjs';
 import { fits } from '../shared/filters.mjs';
-import { alreadyLogged, logRow, updateRow, logRun, lookup } from '../shared/sheet.mjs';
+import { alreadyLogged, logRow, updateRow, logRun, lookup, notify } from '../shared/sheet.mjs';
 import { siteState, appliedAnywhere, recordApplied, recordRun } from './state.mjs';
 import { sleep, istNow, nextRunIst, jobKey, capture, debugDir, pruneDebug } from './util.mjs';
 
@@ -172,6 +172,20 @@ try {
   if (!stop) {
     summary.seen = jobs.length;
     log(`Found ${jobs.length} jobs`);
+
+    // New messages from companies: email her (the site may not).
+    if (site.messages) {
+      const convos = await site.messages(page);
+      if (convos === null) summary.errors.push('Could not read Messages');
+      s.seenMessages ||= {};
+      for (const c of convos || []) {
+        if (c.mine || s.seenMessages[c.id]) continue;
+        log(`  NEW MESSAGE: ${c.company} (${c.from}): ${c.body.slice(0, 80)}`);
+        if (!DRY && await notify({ site: site.label, company: c.company, from: c.from, body: c.body, sentAt: c.sentAt ? istNow(c.sentAt) : '', link: 'https://wellfound.com/jobs/messages' })) s.seenMessages[c.id] = istNow();
+        summary.newMessages = (summary.newMessages || 0) + 1;
+      }
+      state.save();
+    }
 
     // Needs you jobs: did she apply herself?
     for (const j of jobs) if (s.handled[j.id] === 'needs you' && !s.needs[j.id] && j.jobLink) s.needs[j.id] = { jobLink: j.jobLink, company: j.company, role: j.role };

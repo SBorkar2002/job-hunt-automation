@@ -89,3 +89,8 @@ export async function lookup(company, role) {
   try { return (await call('lookup', null, { company, role })).rows; }
   catch { return null; }
 }
+
+// A new message from a company: a row in the Messages tab and an email to her.
+export async function notify(message) {
+  return Boolean(await write('message', 'Messages', null, { message }));
+}

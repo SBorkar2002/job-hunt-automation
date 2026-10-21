@@ -22,7 +22,8 @@ const REPLY_SEEN = 'jobbot/reply-seen';
 const LOCATION_HINT = /(bengaluru|bangalore|mumbai|delhi|gurgaon|gurugram|noida|pune|hyderabad|chennai|kolkata|remote|india|hybrid|on-?site|work from home)/i;
 
 function label_(name) { return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name); }
-const me_ = () => Session.getEffectiveUser().getEmail();
+// Her address, saved once from the Mac (owner action). Needs no extra Google permission.
+const me_ = () => { const e = props().getProperty('OWNER_EMAIL'); if (!e) throw new Error('OWNER_EMAIL not set'); return e; };
 const istNow_ = () => Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
 
 /* ---------- filters (same rules as shared/filters.mjs) ---------- */

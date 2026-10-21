@@ -193,6 +193,8 @@ function doPost(e) {
     if (a === 'setup') { setupTracker(); return out({ ok: true }); }
     if (a === 'peek') return out({ ok: true, health: shown_('Health', 20), runs: shown_('Runs', 3) });
     if (a === 'mail') return out({ ok: true, result: { alerts: checkAlerts(), replies: checkReplies(), followUps: followUps() } });
+    if (a === 'owner') { props().setProperty('OWNER_EMAIL', body.job.email); return out({ ok: true }); }
+    if (a === 'message') { messageIn_(body.message); return out({ ok: true }); }
     if (a === 'pages') return out({ ok: true, result: checkPages() });
     if (a === 'resetalerts') return out({ ok: true, result: resetAlertRows_() });
     if (a === 'tail') return out({ ok: true, result: shown_(body.tab, body.job && body.job.n || 15) });
@@ -299,6 +301,22 @@ function shown_(name, n) {
   if (last < 2) return [head];
   const from = Math.max(2, last - n + 1);
   return [head].concat(sh.getRange(from, 1, last - from + 1, sh.getLastColumn()).getDisplayValues());
+}
+
+const MSG_COLUMNS = ['Received', 'Site', 'Company', 'From', 'Message', 'Link', 'Replied'];
+
+/** A company wrote to her: one row in Messages and an email to her own address. */
+function messageIn_(m) {
+  const ss = sheet_();
+  let sh = ss.getSheetByName('Messages');
+  if (!sh) { sh = ss.insertSheet('Messages', 1); header_(sh, MSG_COLUMNS, { 'Message': 420, 'Link': 200 }); sh.getRange(2, col(MSG_COLUMNS, 'Replied'), sh.getMaxRows() - 1).insertCheckboxes(); }
+  const when = m.sentAt ? new Date(String(m.sentAt).replace(' ', 'T') + '+05:30') : new Date();
+  sh.insertRowAfter(1);
+  sh.getRange(2, 1, 1, 6).setValues([[when, m.site, m.company, m.from, m.body, m.link]]);
+  sh.getRange(2, 1).setNumberFormat('dd mmm yyyy, hh:mm');
+  sh.getRange(2, col(MSG_COLUMNS, 'Replied')).insertCheckboxes();
+  MailApp.sendEmail(me_(), 'New ' + m.site + ' message from ' + m.company + ' (' + m.from + ')',
+    m.from + ' at ' + m.company + ' wrote on ' + m.site + ':\n\n' + m.body + '\n\nReply here: ' + m.link + '\n\nCareful with requests to move to Telegram or WhatsApp, install anything, or share ID or bank details.');
 }
 
 /** Run once to create the secret the Mac scripts use. Copy it from the log into the local .env file. */

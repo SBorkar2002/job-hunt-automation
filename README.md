@@ -224,3 +224,7 @@ Cutshort's terms say "You may not use any automated process or service to access
 - **Form helper** (`npm run fill -- <link>`): opens the form, attaches the resume, fills name, email, phone, company, location, LinkedIn, portfolio, pay, notice and start date, drafts the note, and lists required fields left. It never submits. If a thank-you page appears before she closes the window, the job is logged as Applied. Proven on a live Lever form (Meesho): 10 fields filled, resume attached, only "years of experience" left for her.
 - **Doctor** (`npm run doctor`): proven: all checks pass on 22 Oct.
 - Open: years of experience (freelance start date) for forms and filters.
+
+## Wellfound messages (22 Oct 2026)
+
+Wellfound did not notify her when a founder messaged. Now each hourly Wellfound run reads her Messages list (read-only, from the page's own data). Any conversation whose latest message is from the company, not her, gets one email to her and a row at the top of the new **Messages** tab (with a Replied checkbox), once per message. Proven: a test email sent 22 Oct. Her address for alerts is saved in Script Properties (`OWNER_EMAIL`), which also fixes the health and weekly emails.

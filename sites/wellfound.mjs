@@ -18,6 +18,7 @@ import { sleep, JOBBOT, istNow } from '../core/util.mjs';
 const LIST = 'https://wellfound.com/jobs';
 const feed = new Map();
 let feedSeen = false;
+let convos = null;
 
 // "₹2.5L – ₹3.5L • No equity" -> 3.5 (LPA). "₹75,000 – ₹1.5L" mixes units (monthly? yearly?),
 // so it counts as unclear. Other currencies: null (kept in the pay text only).
@@ -31,6 +32,19 @@ export function readPay(comp) {
 }
 
 function collect(url, req, body) {
+  if (/CandidateConversationList/.test(req || '')) {
+    const edges = body?.data?.talent?.conversationList?.conversations?.edges || [];
+    convos = edges.map(({ node: c }) => ({
+      id: `${c.id}:${c.message?.id}`,
+      company: c.startup?.name || '',
+      from: c.message?.sender?.name || '',
+      mine: c.message?.sender?.slug === 'sejal-borkar',
+      body: c.message?.body || '',
+      sentAt: c.message?.sentAt ? new Date(c.message.sentAt * 1000) : null,
+      unread: Boolean(c.unread),
+    }));
+    return;
+  }
   if (!/wellfound\.com\/graphql/.test(url) || !/JobSearchResults/.test(req || '')) return;
   const edges = body?.data?.talent?.jobSearchResults?.startups?.edges;
   if (!Array.isArray(edges)) return;
@@ -148,6 +162,14 @@ const site = {
     const text = await page.locator('body').innerText();
     const applyLeft = await page.getByRole('button', { name: /^apply( now)?$/i }).count();
     return /✓\s*Applied/.test(text) && !applyLeft;
+  },
+
+  // Her Wellfound conversations: latest message in each, and whether she sent it.
+  async messages(page) {
+    convos = null;
+    await page.goto('https://wellfound.com/jobs/messages', { waitUntil: 'domcontentloaded' });
+    await sleep(5000);
+    return convos;
   },
 
   // Exactly what went out, in plain words.
