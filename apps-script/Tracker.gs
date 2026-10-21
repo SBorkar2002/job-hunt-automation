@@ -9,7 +9,7 @@
  * Secrets (sheet id, SHEET_SECRET) live in Script Properties, never in this file.
  */
 
-const TABS = ['LinkedIn', 'Instahyre', 'Wellfound', 'Cutshort', 'Career pages'];
+const TABS = ['LinkedIn', 'Instahyre', 'Wellfound', 'Cutshort', 'Career pages', 'Glassdoor', 'Naukri', 'Indeed'];
 
 const COLUMNS = [
   'Found at', 'Posted at', 'Applied at', 'Minutes to apply',
@@ -192,6 +192,9 @@ function doPost(e) {
     if (a === 'lookup') return out({ ok: true, rows: lookup_(body.job.company, body.job.role) });
     if (a === 'setup') { setupTracker(); return out({ ok: true }); }
     if (a === 'peek') return out({ ok: true, health: shown_('Health', 20), runs: shown_('Runs', 3) });
+    if (a === 'mail') return out({ ok: true, result: { alerts: checkAlerts(), replies: checkReplies(), followUps: followUps() } });
+    if (a === 'mailpeek') return out({ ok: true, result: peekMail_() });
+    if (a === 'triggers') return out({ ok: true, result: installTriggers() });
     return out({ ok: false, error: 'unknown action' });
   } catch (err) {
     return out({ ok: false, error: String(err) });
