@@ -182,7 +182,7 @@ function checkReplies() {
     else if (/interview|schedule a (call|chat)|your availability|next round|assignment|take-?home/i.test(hay)) status = 'Interview';
     const sh = sheet_().getSheetByName(row.tab);
     sh.getRange(row.r, col(COLUMNS, 'Status')).setValue(status);
-    sh.getRange(row.r, col(COLUMNS, 'Response at')).setValue(msg.getDate()).setNumberFormat('dd mmm yyyy, hh:mm');
+    fmt_(sh.getRange(row.r, col(COLUMNS, 'Response at')).setValue(msg.getDate()), 'dd mmm yyyy, hh:mm');
     const notes = sh.getRange(row.r, col(COLUMNS, 'Notes'));
     notes.setValue([notes.getValue(), status + ' (email: "' + subject.slice(0, 80) + '")'].filter(String).join(' · '));
     th.addLabel(done);
@@ -232,8 +232,8 @@ function followUps() {
       const hi = poster ? 'Hi ' + poster.split(',')[0].split(' ')[0] + ',' : 'Hi,';
       const draft = hi + ' I applied for the ' + role + ' role at ' + company + ' last week and wanted to check in. I\'d love to talk about it, and my work is at sejalborkar.vercel.app. Thanks, Sejal';
       fu.appendRow([new Date(), tab, company, role, link, poster, draft, false]);
-      fu.getRange(fu.getLastRow(), 1).setNumberFormat('dd mmm yyyy');
-      sh.getRange(i + 2, col(COLUMNS, 'Follow-up on')).setValue(new Date()).setNumberFormat('dd mmm yyyy');
+      fmt_(fu.getRange(fu.getLastRow(), 1), 'dd mmm yyyy');
+      fmt_(sh.getRange(i + 2, col(COLUMNS, 'Follow-up on')).setValue(new Date()), 'dd mmm yyyy');
       n++;
     });
   });
@@ -289,10 +289,11 @@ function weeklySummary() {
 
 /** Creates the timers (safe to run again: it replaces them). */
 function installTriggers() {
-  const keep = ['checkAlerts', 'checkReplies', 'followUps', 'healthAlert', 'weeklySummary', 'checkPages'];
+  const keep = ['checkAlerts', 'checkReplies', 'followUps', 'healthAlert', 'weeklySummary', 'checkPages', 'tidyHourly'];
   ScriptApp.getProjectTriggers().filter(t => keep.indexOf(t.getHandlerFunction()) >= 0).forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('checkAlerts').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('checkPages').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('tidyHourly').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('checkReplies').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('healthAlert').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('followUps').timeBased().everyDays(1).atHour(9).inTimezone('Asia/Kolkata').create();
@@ -342,3 +343,6 @@ function resetAlertRows_() {
   });
   return removed;
 }
+
+/** Hourly: her green/red fills become Status, Skipped rows move to the Skipped tab, tabs are sorted. */
+function tidyHourly() { return tidy_(false); }

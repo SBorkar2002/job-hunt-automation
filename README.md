@@ -229,3 +229,10 @@ Cutshort's terms say "You may not use any automated process or service to access
 
 Wellfound did not notify her when a founder messaged. Now each hourly Wellfound run reads her Messages list (read-only, from the page's own data). Any conversation whose latest message is from the company, not her, gets one email to her and a row at the top of the new **Messages** tab (with a Replied checkbox), once per message. Proven: a test email sent 22 Oct. Her address for alerts is saved in Script Properties (`OWNER_EMAIL`), which also fixes the health and weekly emails.
 - Fixed 22 Oct: at 10:41 Wellfound's own search failed ("An error has occurred during your search") and the bot reported "Needs fix". Now it reloads once; if Wellfound is still down, Health shows "Site error" (their side), no alert email, and it retries next hour.
+
+## Sheet fixes and tidy-up (22 Oct 2026)
+
+- **What broke:** around 3pm the Sheet got typed columns (a Google Sheets Table). Google refuses date formatting on typed columns, and because it applies changes in batches, the error surfaced on the next read and killed every Health update, Runs row and cloud email-alert run. Retries also left 26 duplicate Runs rows. **Fix:** every format step runs in a safety net that flushes inside it, Health times are written as text, the 5 stuck updates were sent, and duplicates removed.
+- **Her colours:** light green fill = Applied, light red = Skipped. An hourly cloud job (`tidyHourly`) turns them into Status (never overriding Replied, Interview, Offer, Rejected, Viewed or No reply), moves Skipped rows to the **Skipped** tab, and sorts each site tab: Needs you, then Applied, then the rest, newest first.
+- **Never again:** the duplicate checks (link and company plus role) include the Skipped tab, on the Mac and in the cloud, so skipped jobs never come back. A light blue-grey fill (2 Glassdoor rows) is left alone until she says what it means.
+- Proof: before Needs you 29, Applied 10, Skipped 7 (in site tabs); after Needs you 16, Applied 13, Skipped tab 17; a second dry run changes nothing.

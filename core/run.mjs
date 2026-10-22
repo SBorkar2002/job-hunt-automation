@@ -216,6 +216,9 @@ try {
       if (summary.applied >= LIMIT) { log(`Limit of ${LIMIT} for this run reached.`); break; }
 
       job.track = fit.track;
+      // She skipped this company and role before (on any site): never bring it back.
+      const known = DRY ? null : await lookup(job.company, job.role);
+      if (known && known.some(r => r.tab === 'Skipped')) { s.handled[job.id] = 'skipped by you'; skip('you skipped it before', `${label} (you skipped it before)`); continue; }
       const hold = await crossSiteHold(job, key);
       if (hold) { skip('applied on another site', `${label} (${hold})`); continue; }
 

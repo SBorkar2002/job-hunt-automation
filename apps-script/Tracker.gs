@@ -67,30 +67,30 @@ function setupTab_(ss, name) {
   header_(sh, COLUMNS, WIDTHS);
   const rows = sh.getMaxRows() - 1;
   const list = values => SpreadsheetApp.newDataValidation().requireValueInList(values, true).build();
-  sh.getRange(2, col(COLUMNS, 'Status'), rows).setDataValidation(list(STATUSES));
-  sh.getRange(2, col(COLUMNS, 'Action'), rows).setDataValidation(list(ACTIONS));
+  safe_(() => sh.getRange(2, col(COLUMNS, 'Status'), rows).setDataValidation(list(STATUSES)));
+  safe_(() => sh.getRange(2, col(COLUMNS, 'Action'), rows).setDataValidation(list(ACTIONS)));
   ['Found at', 'Posted at', 'Applied at', 'Response at'].forEach(n =>
-    sh.getRange(2, col(COLUMNS, n), rows).setNumberFormat('dd mmm yyyy, hh:mm'));
-  sh.getRange(2, col(COLUMNS, 'Follow-up on'), rows).setNumberFormat('dd mmm yyyy');
+    fmt_(sh.getRange(2, col(COLUMNS, n), rows), 'dd mmm yyyy, hh:mm'));
+  fmt_(sh.getRange(2, col(COLUMNS, 'Follow-up on'), rows), 'dd mmm yyyy');
 }
 
 function setupRuns_(ss) {
   const sh = ss.getSheetByName('Runs') || ss.insertSheet('Runs');
   header_(sh, RUN_COLUMNS, { 'Skipped': 200, 'Near misses': 200, 'Errors': 240 });
-  sh.getRange(2, 1, sh.getMaxRows() - 1).setNumberFormat('dd mmm yyyy, hh:mm');
-  sh.getRange(2, col(RUN_COLUMNS, 'Next run'), sh.getMaxRows() - 1).setNumberFormat('dd mmm, hh:mm');
+  fmt_(sh.getRange(2, 1, sh.getMaxRows() - 1), 'dd mmm yyyy, hh:mm');
+  fmt_(sh.getRange(2, col(RUN_COLUMNS, 'Next run'), sh.getMaxRows() - 1), 'dd mmm, hh:mm');
 }
 
 function setupHealth_(ss) {
   const sh = ss.getSheetByName('Health') || ss.insertSheet('Health');
   header_(sh, HEALTH_COLUMNS, { 'Status': 200, 'Login': 220, 'Problem': 280 });
-  sh.hideColumns(col(HEALTH_COLUMNS, 'Bot status'));
+  safe_(() => sh.hideColumns(col(HEALTH_COLUMNS, 'Bot status')));
   ['Last good run', 'Last run', 'Next run'].forEach(n =>
-    sh.getRange(2, col(HEALTH_COLUMNS, n), sh.getMaxRows() - 1).setNumberFormat('dd mmm, hh:mm'));
+    fmt_(sh.getRange(2, col(HEALTH_COLUMNS, n), sh.getMaxRows() - 1), 'dd mmm, hh:mm'));
   const status = sh.getRange(2, col(HEALTH_COLUMNS, 'Status'), sh.getMaxRows() - 1);
   const green = SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('OK').setBackground('#d9f4e4').setRanges([status]).build();
   const red = SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($B2<>"",$B2<>"OK")').setBackground('#fde3e1').setFontColor('#b3261e').setRanges([status]).build();
-  sh.setConditionalFormatRules([green, red]);
+  safe_(() => sh.setConditionalFormatRules([green, red]));
 }
 
 /** Old rows: replace retired codes with plain words and turn text times into real dates. */
@@ -157,7 +157,7 @@ function addJob(tab, job) {
   // Minutes to apply fills itself once Applied at is set.
   const r = sh.getLastRow();
   // Adding a row resets date formats, so set them again on this row.
-  ['Found at', 'Posted at', 'Applied at', 'Response at'].forEach(n => sh.getRange(r, col(COLUMNS, n)).setNumberFormat('dd mmm yyyy, hh:mm'));
+  ['Found at', 'Posted at', 'Applied at', 'Response at'].forEach(n => fmt_(sh.getRange(r, col(COLUMNS, n)), 'dd mmm yyyy, hh:mm'));
   sh.getRange(r, col(COLUMNS, 'Minutes to apply'))
     .setFormulaR1C1('=IF(OR(R[0]C3="",R[0]C2=""),"",ROUND((R[0]C3-R[0]C2)*1440))');
   return true;
@@ -194,6 +194,9 @@ function doPost(e) {
     if (a === 'peek') return out({ ok: true, health: shown_('Health', 20), runs: shown_('Runs', 3) });
     if (a === 'mail') return out({ ok: true, result: { alerts: checkAlerts(), replies: checkReplies(), followUps: followUps() } });
     if (a === 'owner') { props().setProperty('OWNER_EMAIL', body.job.email); return out({ ok: true }); }
+    if (a === 'tidy') return out({ ok: true, result: tidy_(Boolean(body.job && body.job.dryRun)) });
+    if (a === 'colors') return out({ ok: true, result: rowColors_() });
+    if (a === 'dedupeRuns') return out({ ok: true, result: dedupeRuns_() });
     if (a === 'message') { messageIn_(body.message); return out({ ok: true }); }
     if (a === 'pages') return out({ ok: true, result: checkPages() });
     if (a === 'resetalerts') return out({ ok: true, result: resetAlertRows_() });
@@ -203,15 +206,20 @@ function doPost(e) {
     if (a === 'triggers') return out({ ok: true, result: installTriggers() });
     return out({ ok: false, error: 'unknown action' });
   } catch (err) {
-    return out({ ok: false, error: String(err) });
+    return out({ ok: false, error: String(err) + ' @ ' + String(err.stack || '').split('\n').slice(0, 4).join(' < ') });
   }
 }
 
+// A job counts as known if its link is on its own tab or in Skipped (she never wants those back).
 function hasJob_(tab, link) {
-  const sh = sheet_().getSheetByName(tab);
-  const last = sh.getLastRow();
-  if (last < 2 || !link) return false;
-  return sh.getRange(2, col(COLUMNS, 'Job link'), last - 1).getValues().flat().indexOf(link) >= 0;
+  if (!link) return false;
+  return [tab, 'Skipped'].some(name => {
+    const sh = sheet_().getSheetByName(name);
+    if (!sh) return false;
+    const last = sh.getLastRow();
+    if (last < 2) return false;
+    return sh.getRange(2, col(COLUMNS, 'Job link'), last - 1).getValues().flat().indexOf(link) >= 0;
+  });
 }
 
 /**
@@ -230,7 +238,7 @@ function updateJob_(tab, job) {
   set('Action', job.action);
   set('Status', job.status);
   set('Applied at', job.appliedAt);
-  if (job.appliedAt) sh.getRange(r, col(COLUMNS, 'Applied at')).setNumberFormat('dd mmm yyyy, hh:mm');
+  if (job.appliedAt) fmt_(sh.getRange(r, col(COLUMNS, 'Applied at')), 'dd mmm yyyy, hh:mm');
   set('Resume version', job.resume);
   set('Note used', job.note);
   if (job.notes) {
@@ -250,8 +258,9 @@ function normRole_(s) {
 
 function lookup_(company, role) {
   const c = normCompany_(company), r = normRole_(role), found = [];
-  TABS.forEach(name => {
+  TABS.concat(['Skipped']).forEach(name => {
     const sh = sheet_().getSheetByName(name);
+    if (!sh) return;
     const last = sh.getLastRow();
     if (last < 2) return;
     sh.getRange(2, 1, last - 1, COLUMNS.length).getValues().forEach(v => {
@@ -273,18 +282,20 @@ function logRun_(run) {
   const runs = ss.getSheetByName('Runs');
   runs.appendRow([when(run.runAt), run.site, run.seen, run.matched, run.applied, needs, skipped, near, (run.errors || []).join('; ') || 'None', when(run.nextRun)]);
   const rr = runs.getLastRow();
-  runs.getRange(rr, 1).setNumberFormat('dd mmm yyyy, hh:mm');
-  runs.getRange(rr, col(RUN_COLUMNS, 'Next run')).setNumberFormat('dd mmm, hh:mm');
+  fmt_(runs.getRange(rr, 1), 'dd mmm yyyy, hh:mm');
+  fmt_(runs.getRange(rr, col(RUN_COLUMNS, 'Next run')), 'dd mmm, hh:mm');
 
   const sh = ss.getSheetByName('Health');
   const last = sh.getLastRow();
   const sites = last > 1 ? sh.getRange(2, 1, last - 1).getValues().flat() : [];
   let r = sites.indexOf(run.site) + 2;
-  if (r < 2) { r = last + 1; sh.getRange(r, 1).setValue(run.site); }
-  const set = (name, v) => sh.getRange(r, col(HEALTH_COLUMNS, name)).setValue(v);
+  if (r < 2) { r = last + 1; safe_(() => sh.getRange(r, 1).setValue(run.site)); }
+  // Health is for reading only: times go in as text ("22 Oct, 15:00"), and no single cell can block the rest.
+  const txt = v => (v instanceof Date ? Utilities.formatDate(v, 'Asia/Kolkata', 'yyyy-MM-dd HH:mm') : v);
+  const set = (name, v) => safe_(() => sh.getRange(r, col(HEALTH_COLUMNS, name)).setValue(txt(v)));
   set('Bot status', run.health);
-  sh.getRange(r, col(HEALTH_COLUMNS, 'Status')).setFormula(
-    '=IF(I' + r + '="","",IF(AND(I' + r + '="OK",HOUR(NOW())>=9,HOUR(NOW())<23,NOW()-C' + r + '>3/24),"No good run in 3 hours",I' + r + '))');
+  safe_(() => sh.getRange(r, col(HEALTH_COLUMNS, 'Status')).setFormula(
+    '=IF(I' + r + '="","",IF(AND(I' + r + '="OK",HOUR(NOW())>=9,HOUR(NOW())<23,NOW()-IFERROR(DATEVALUE(C' + r + ')+TIMEVALUE(C' + r + '),C' + r + ')>3/24),"No good run in 3 hours",I' + r + '))'));
   if (run.health === 'OK') set('Last good run', when(run.runAt));
   set('Last run', when(run.runAt));
   set('Next run', when(run.nextRun));
@@ -313,8 +324,8 @@ function messageIn_(m) {
   const when = m.sentAt ? new Date(String(m.sentAt).replace(' ', 'T') + '+05:30') : new Date();
   sh.insertRowAfter(1);
   sh.getRange(2, 1, 1, 6).setValues([[when, m.site, m.company, m.from, m.body, m.link]]);
-  sh.getRange(2, 1).setNumberFormat('dd mmm yyyy, hh:mm');
-  sh.getRange(2, col(MSG_COLUMNS, 'Replied')).insertCheckboxes();
+  fmt_(sh.getRange(2, 1), 'dd mmm yyyy, hh:mm');
+  safe_(() => sh.getRange(2, col(MSG_COLUMNS, 'Replied')).insertCheckboxes());
   MailApp.sendEmail(me_(), 'New ' + m.site + ' message from ' + m.company + ' (' + m.from + ')',
     m.from + ' at ' + m.company + ' wrote on ' + m.site + ':\n\n' + m.body + '\n\nReply here: ' + m.link + '\n\nCareful with requests to move to Telegram or WhatsApp, install anything, or share ID or bank details.');
 }
@@ -324,4 +335,130 @@ function makeSecret() {
   const s = Utilities.getUuid().replace(/-/g, '');
   props().setProperty('SHEET_SECRET', s);
   Logger.log('SHEET_SECRET=' + s);
+}
+
+/**
+ * Sets a date or number format, unless the column is a typed Table column
+ * (Google refuses those, and the column already has its own format).
+ * A format must never stop a row from being written.
+ */
+function fmt_(range, format) {
+  // Google applies changes in batches, so flush here: the typed-column error must surface inside this try.
+  try { range.setNumberFormat(format); SpreadsheetApp.flush(); } catch (e) { /* typed column: keep its own format */ }
+  return range;
+}
+
+/** Runs a formatting step that a typed Table column may refuse; never lets it stop a write. */
+function safe_(fn) { try { fn(); SpreadsheetApp.flush(); } catch (e) { /* typed column or protected range */ } }
+
+/** Removes repeated Runs rows (same time and site), left by retries that failed half-way. */
+function dedupeRuns_() {
+  const sh = sheet_().getSheetByName('Runs');
+  const last = sh.getLastRow();
+  if (last < 3) return 0;
+  const vals = sh.getRange(2, 1, last - 1, 2).getDisplayValues();
+  const seen = {}, drop = [];
+  vals.forEach((v, i) => { const k = v[0] + '|' + v[1]; if (seen[k] || v[1] === 'Probe') drop.push(i + 2); else seen[k] = true; });
+  drop.reverse().forEach(r => sh.deleteRow(r));
+  return drop.length;
+}
+
+/** Each job row with its fill colour (her green = applied, red = skipped) and current Status. */
+function rowColors_() {
+  const out = [];
+  sheet_().getSheets().forEach(sh => {
+    const name = sh.getName();
+    if (['Health', 'Runs', 'Messages', 'Follow-ups'].indexOf(name) >= 0) return;
+    const last = sh.getLastRow();
+    if (last < 2) return;
+    const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+    const ci = n => head.indexOf(n);
+    const vals = sh.getRange(2, 1, last - 1, head.length).getDisplayValues();
+    const bgs = sh.getRange(2, 1, last - 1, head.length).getBackgrounds();
+    vals.forEach((v, i) => {
+      const fills = bgs[i].filter(c => c && c !== '#ffffff');
+      out.push({ tab: name, row: i + 2, company: v[ci('Company')], role: v[ci('Role')], status: v[ci('Status')], link: v[ci('Job link')], fill: fills[0] || '' });
+    });
+  });
+  return out;
+}
+
+/* ---------- tidy: her colours -> Status, skipped rows -> Skipped tab, sort ---------- */
+
+const GREEN = ['#d9ead3', '#b6d7a8', '#93c47d', '#d9f4e4', '#c8e6c9', '#a8e6a3'];
+const RED = ['#f4cccc', '#ea9999', '#e06666', '#fde3e1', '#ffcdd2', '#f8b4b4'];
+const LATER = ['Replied', 'Interview', 'Offer', 'Rejected', 'Viewed', 'No reply'];
+const ORDER = { 'Needs you': 0, 'Applied': 1 };
+
+function tidy_(dryRun) {
+  const ss = sheet_();
+  const before = statusCounts_(), plan = { coloured: [], moved: [], skippedTabRows: 0 };
+  let skip = ss.getSheetByName('Skipped');
+  if (!skip && !dryRun) { skip = ss.insertSheet('Skipped'); header_(skip, COLUMNS.concat(['From tab']), WIDTHS); }
+
+  TABS.forEach(name => {
+    const sh = ss.getSheetByName(name);
+    const last = sh.getLastRow();
+    if (last < 2) return;
+    const range = sh.getRange(2, 1, last - 1, COLUMNS.length);
+    const vals = range.getValues(), bgs = range.getBackgrounds();
+    const iS = col(COLUMNS, 'Status') - 1, iA = col(COLUMNS, 'Action') - 1;
+    // 1. Her colours set the Status, unless she already moved it further (Replied, Interview...).
+    vals.forEach((v, i) => {
+      const fill = (bgs[i].find(c => c && c !== '#ffffff') || '').toLowerCase();
+      if (LATER.indexOf(v[iS]) >= 0) return;
+      const to = GREEN.indexOf(fill) >= 0 ? 'Applied' : RED.indexOf(fill) >= 0 ? 'Skipped' : null;
+      if (to && v[iS] !== to) {
+        plan.coloured.push(name + ': ' + v[col(COLUMNS, 'Company') - 1] + ' -> ' + to);
+        if (!dryRun) { sh.getRange(i + 2, iS + 1).setValue(to); if (to === 'Applied' && v[iA] !== 'Applied') sh.getRange(i + 2, iA + 1).setValue('Applied'); }
+        v[iS] = to;
+      }
+    });
+    // 2. Skipped rows move to the Skipped tab (kept for the duplicate check), bottom-up so rows don't shift.
+    for (let i = vals.length - 1; i >= 0; i--) {
+      if (vals[i][iS] !== 'Skipped') continue;
+      plan.moved.push(name + ': ' + vals[i][col(COLUMNS, 'Company') - 1] + ', ' + vals[i][col(COLUMNS, 'Role') - 1]);
+      if (!dryRun) {
+        const row = vals[i].map(x => (x instanceof Date ? x : x)).concat([name]);
+        skip.appendRow(row);
+        safe_(() => skip.getRange(skip.getLastRow(), 1, 1, row.length).setBackgrounds([bgs[i].concat(['#ffffff'])]));
+        sh.deleteRow(i + 2);
+      }
+    }
+    // 3. Sort: Needs you, then Applied, then the rest; newest first inside each group.
+    if (!dryRun) sortTab_(sh);
+  });
+  if (skip) plan.skippedTabRows = Math.max(0, skip.getLastRow() - 1);
+  return { dryRun: dryRun, before: before, after: dryRun ? null : statusCounts_(), changes: { coloured: plan.coloured.length, moved: plan.moved.length }, coloured: plan.coloured, moved: plan.moved, skippedTabRows: plan.skippedTabRows };
+}
+
+function sortTab_(sh) {
+  const last = sh.getLastRow();
+  if (last < 3) return;
+  const range = sh.getRange(2, 1, last - 1, COLUMNS.length);
+  const vals = range.getValues(), bgs = range.getBackgrounds(), fml = range.getFormulasR1C1();
+  const iS = col(COLUMNS, 'Status') - 1, iF = col(COLUMNS, 'Found at') - 1;
+  const idx = vals.map((v, i) => i).sort((a, b) => {
+    const ga = ORDER[vals[a][iS]] !== undefined ? ORDER[vals[a][iS]] : 2;
+    const gb = ORDER[vals[b][iS]] !== undefined ? ORDER[vals[b][iS]] : 2;
+    if (ga !== gb) return ga - gb;
+    return new Date(vals[b][iF] || 0) - new Date(vals[a][iF] || 0);
+  });
+  range.setValues(idx.map(i => vals[i]));
+  safe_(() => range.setBackgrounds(idx.map(i => bgs[i])));
+  const iM = col(COLUMNS, 'Minutes to apply');
+  idx.forEach((i, k) => { if (fml[i][iM - 1]) sh.getRange(k + 2, iM).setFormulaR1C1(fml[i][iM - 1]); });
+}
+
+function statusCounts_() {
+  const c = {};
+  TABS.concat(['Skipped']).forEach(name => {
+    const sh = sheet_().getSheetByName(name);
+    if (!sh || sh.getLastRow() < 2) return;
+    sh.getRange(2, col(COLUMNS, 'Status'), sh.getLastRow() - 1).getValues().flat().forEach(s => {
+      const k = (name === 'Skipped' ? 'Skipped tab' : 'Site tabs') + ': ' + (s || '(blank)');
+      c[k] = (c[k] || 0) + 1;
+    });
+  });
+  return c;
 }
