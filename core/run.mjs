@@ -162,8 +162,8 @@ try {
   const block = await blocked();
   const changed = !block && await site.check(page);
   if (block || changed) {
-    summary.health = block ? block.health : `Needs fix: ${changed}`;
-    summary.errors.push(block ? block.msg : changed);
+    summary.health = block ? block.health : /^SITE: /.test(changed) ? 'Site error' : `Needs fix: ${changed}`;
+    summary.errors.push(block ? block.msg : changed.replace(/^SITE: /, ''));
     await capture(page, site.name, 'start-check');
     log(`STOP: ${block ? block.msg : changed}`);
     stop = true;

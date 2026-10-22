@@ -104,6 +104,10 @@ const site = {
     feed.clear(); feedSeen = false;
     await page.goto(LIST, { waitUntil: 'domcontentloaded' });
     await sleep(6000);
+    // Wellfound's search sometimes fails on their side ("An error has occurred during your search"). Reload once.
+    if (!feedSeen && /error has occurred during your search/i.test(await page.locator('body').innerText().catch(() => ''))) {
+      await sleep(10000); await page.reload({ waitUntil: 'domcontentloaded' }); await sleep(6000);
+    }
     for (let i = 0; i < 2; i++) { await page.mouse.wheel(0, 6000); await sleep(3000); }
     return [...feed.values()].sort((a, b) => (a.postedHoursAgo ?? 1e9) - (b.postedHoursAgo ?? 1e9));
   },
@@ -111,7 +115,9 @@ const site = {
   // Start-of-run check: logged in, and the job list loaded as expected.
   async check(page) {
     if (!(await site.isLoggedIn(page))) return 'Logged out of Wellfound. Run npm run wellfound:login';
-    return feedSeen ? null : 'The job list did not load (no JobSearchResults data)';
+    if (feedSeen) return null;
+    if (/error has occurred during your search/i.test(await page.locator('body').innerText().catch(() => ''))) return 'SITE: Wellfound search is down on their side. Trying again next hour';
+    return 'The job list did not load (no JobSearchResults data)';
   },
 
   // Reads one job's page: experience asked.

@@ -248,7 +248,7 @@ function healthAlert() {
   const sh = sheet_().getSheetByName('Health');
   if (sh.getLastRow() < 2) return false;
   const red = sh.getRange(2, 1, sh.getLastRow() - 1, HEALTH_COLUMNS.length).getDisplayValues()
-    .filter(r => r[0] && r[0] !== 'Email alerts' && r[1] && r[1] !== 'OK');
+    .filter(r => r[0] && r[0] !== 'Email alerts' && r[1] && r[1] !== 'OK' && r[1] !== 'Site error');
   if (!red.length) { props().deleteProperty('LAST_HEALTH_ALERT'); return false; }
   const last = Number(props().getProperty('LAST_HEALTH_ALERT') || 0);
   if (Date.now() - last < 6 * 3600 * 1000) return false;

@@ -228,3 +228,4 @@ Cutshort's terms say "You may not use any automated process or service to access
 ## Wellfound messages (22 Oct 2026)
 
 Wellfound did not notify her when a founder messaged. Now each hourly Wellfound run reads her Messages list (read-only, from the page's own data). Any conversation whose latest message is from the company, not her, gets one email to her and a row at the top of the new **Messages** tab (with a Replied checkbox), once per message. Proven: a test email sent 22 Oct. Her address for alerts is saved in Script Properties (`OWNER_EMAIL`), which also fixes the health and weekly emails.
+- Fixed 22 Oct: at 10:41 Wellfound's own search failed ("An error has occurred during your search") and the bot reported "Needs fix". Now it reloads once; if Wellfound is still down, Health shows "Site error" (their side), no alert email, and it retries next hour.
