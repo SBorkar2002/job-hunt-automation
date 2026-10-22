@@ -212,15 +212,28 @@ try {
         if (reason === 'title' && /design|artist|illustrat|creative|ux|ui\b|visual|brand|motion|animat/i.test(job.role)) summary.nearMisses.push(job.role);
         continue;
       }
-      if (state.appliedToday() >= dailyCap) { log(`Daily cap of ${dailyCap} reached.`); break; }
+      if (!site.findOnly && state.appliedToday() >= dailyCap) { log(`Daily cap of ${dailyCap} reached.`); break; }
       if (summary.applied >= LIMIT) { log(`Limit of ${LIMIT} for this run reached.`); break; }
 
       job.track = fit.track;
       // She skipped this company and role before (on any site): never bring it back.
-      const known = DRY ? null : await lookup(job.company, job.role);
+      const known = await lookup(job.company, job.role); // a read, so dry runs check it too
       if (known && known.some(r => r.tab === 'Skipped')) { s.handled[job.id] = 'skipped by you'; skip('you skipped it before', `${label} (you skipped it before)`); continue; }
       const hold = await crossSiteHold(job, key);
       if (hold) { skip('applied on another site', `${label} (${hold})`); continue; }
+
+      // Find-only sources (no apply button of their own): list the job for her, never apply.
+      if (site.findOnly) {
+        // Her rule for listings without pay: graphic and video roles only when good pay is shown.
+        if (job.track === 'graphic' && !(job.payTop >= 8)) { s.handled[job.id] = 'skipped'; skip('graphic without good pay', `${label} (graphic, no pay shown)`); continue; }
+        if (known && known.length) { s.handled[job.id] = 'listed elsewhere'; skip('already in the Sheet (same company and role)', `${label} (already in the Sheet)`); continue; }
+        summary.matched++;
+        await needsYou({ ...job, resume: 'None', note: 'None', notes: [`track: ${job.track}`, job.level && `level: ${job.level}`, job.posted && `posted ${job.posted}`].filter(Boolean).join(' · ') },
+          `Found on ${site.label}. Apply on the company's page, or run on the Mac: npm run fill -- ${job.jobLink}`);
+        s.handled[job.id] = 'listed';
+        state.save();
+        continue;
+      }
 
       Object.assign(job, await site.details(page, job), { payChecked: true });
       const midBlock = await blocked();

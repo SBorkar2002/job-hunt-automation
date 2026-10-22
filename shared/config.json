@@ -85,7 +85,15 @@
     "wfh"
   ],
   "maxYearsRequired": 2,
-  "avoidCompanies": [],
+  "avoidCompanies": [
+    "Accenture",
+    "Infosys",
+    "Wipro",
+    "TCS",
+    "Cognizant",
+    "Capgemini",
+    "HCL"
+  ],
   "dreamCompanies": [],
   "postedWithinHours": 24,
   "portfolio": "https://sejalborkar.vercel.app",
@@ -106,6 +114,18 @@
       "ref": "wellfound",
       "postedWithinHours": 336,
       "runMinute": 30
+    },
+    "startupmap": {
+      "tab": "Startup map",
+      "dailyCap": 0,
+      "minGapSeconds": 0,
+      "ref": "startupmap",
+      "postedWithinHours": 336,
+      "runMinute": 15,
+      "runHours": [
+        9
+      ],
+      "findOnly": true
     }
   },
   "notes": {
