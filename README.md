@@ -246,3 +246,7 @@ After the laptop reset she chose fewer, spaced-out runs to look less like a bot:
 - **At most 3 applies per run** (`perRunCap`), so 10 a day is spread across the day instead of one burst. Gaps between applies are unchanged (Instahyre 90 to 180 s, Wellfound 3 to 6 min).
 - **Trade-off:** a new job can wait up to 3 hours before the bot sees it.
 - **Health:** red after 4 hours without a good run (was 3), so the gap between runs never shows red. Cloud jobs (Gmail alerts, career pages, replies) stay hourly.
+
+## Product note v2 (1 Nov 2026, her OK)
+
+Epifi is winding down, so the product note no longer says she works there now, and it does not say the role ended either: "Hi {company} team, I'm Sejal, a product designer who ships GenAI products, most recently at Epifi. I'd love to bring that to the {role} role. My work is here: {portfolio}" (`note-v2`). The visual note is unchanged. `npm run fill` still types "Epifi" for current company; switch it once the shutdown is final.
