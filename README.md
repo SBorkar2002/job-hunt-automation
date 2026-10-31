@@ -250,3 +250,5 @@ After the laptop reset she chose fewer, spaced-out runs to look less like a bot:
 ## Product note v2 (1 Nov 2026, her OK)
 
 Epifi is winding down, so the product note no longer says she works there now, and it does not say the role ended either: "Hi {company} team, I'm Sejal, a product designer who ships GenAI products, most recently at Epifi. I'd love to bring that to the {role} role. My work is here: {portfolio}" (`note-v2`). The visual note is unchanged. `npm run fill` still types "Epifi" for current company; switch it once the shutdown is final.
+
+**Same day, v3 (her OK):** plainer, without the stock closer: "Hi {company} team, I'm Sejal, a product designer. Most recently I designed GenAI features at Epifi, from first idea to launch. My work is here: {portfolio}" (`note-v3`). Used where no per-job note is approved: Instahyre cover-note fields and `npm run fill`. Wellfound always sends the per-job note she approves.
