@@ -117,9 +117,9 @@
   },
   "notes": {
     "product": {
-      "version": "note-v2",
+      "version": "note-v3",
       "approved": true,
-      "text": "Hi {company} team, I'm Sejal, a product designer who ships GenAI products, most recently at Epifi. I'd love to bring that to the {role} role. My work is here: {portfolio}"
+      "text": "Hi {company} team, I'm Sejal, a product designer. Most recently I designed GenAI features at Epifi, from first idea to launch. My work is here: {portfolio}"
     },
     "visual": {
       "version": "note-visual-v1",
