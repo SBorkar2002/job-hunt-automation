@@ -295,7 +295,7 @@ function logRun_(run) {
   const set = (name, v) => safe_(() => sh.getRange(r, col(HEALTH_COLUMNS, name)).setValue(txt(v)));
   set('Bot status', run.health);
   safe_(() => sh.getRange(r, col(HEALTH_COLUMNS, 'Status')).setFormula(
-    '=IF(I' + r + '="","",IF(AND(I' + r + '="OK",HOUR(NOW())>=9,HOUR(NOW())<23,NOW()-IFERROR(DATEVALUE(C' + r + ')+TIMEVALUE(C' + r + '),C' + r + ')>3/24),"No good run in 3 hours",I' + r + '))'));
+    '=IF(I' + r + '="","",IF(AND(I' + r + '="OK",HOUR(NOW())>=9,HOUR(NOW())<23,NOW()-IFERROR(DATEVALUE(C' + r + ')+TIMEVALUE(C' + r + '),C' + r + ')>' + CONFIG.schedule.staleHours + '/24),"No good run in ' + CONFIG.schedule.staleHours + ' hours",I' + r + '))'));
   if (run.health === 'OK') set('Last good run', when(run.runAt));
   set('Last run', when(run.runAt));
   set('Next run', when(run.nextRun));

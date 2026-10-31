@@ -10,15 +10,14 @@ export const istNow = (d = new Date()) => d.toLocaleString('sv-SE', { timeZone: 
 export const istToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 export const istHour = () => Number(new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', hour12: false }));
 
-// The timer runs every hour from 8am to 11pm IST, at each site's minute (config runMinute).
-export function nextRunIst(minute = 0) {
+// The timer runs at the IST hours in config schedule.runHours, at each site's minute (config runMinute).
+export function nextRunIst(minute = 0, hours = [8, 11, 14, 17, 20, 23]) {
   const [day, time] = istNow().split(' ');
   const [h, m] = time.split(':').map(Number);
   const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   const at = (d, hour) => `${d} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-  if (h < 8) return at(day, 8);
-  const nextHour = m < minute ? h : h + 1;
-  return nextHour <= 23 ? at(day, nextHour) : at(tomorrow, 8);
+  const next = hours.find(hr => hr > h || (hr === h && m < minute));
+  return next !== undefined ? at(day, next) : at(tomorrow, hours[0]);
 }
 
 // Same company and role on two sites should match even with small differences.
