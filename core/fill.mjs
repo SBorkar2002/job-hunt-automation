@@ -14,7 +14,7 @@ import { istNow, sleep } from './util.mjs';
 
 const url = process.argv[2];
 if (!url) { console.log('Usage: npm run fill -- <job link>'); process.exit(1); }
-const RESUME = join(os.homedir(), 'Documents/Github/my-portfolio/public/Sejal_Borkar_Resume.pdf');
+const RESUME = join(os.homedir(), 'Documents/Personal/Github/my-portfolio/public/Sejal_Borkar_Resume.pdf');
 const PORTFOLIO = config.portfolio;
 const LINKEDIN = 'https://www.linkedin.com/in/sejalborkar';
 
