@@ -21,7 +21,7 @@ npm run doctor
 | Health tab red: "Login expired" | A site logged you out | `npm run instahyre:login` or `npm run wellfound:login`, log in, done |
 | Health tab red: "Bot check" | The site showed a CAPTCHA | Open the site in the bot's Chrome (`npm run <site>:login`) and finish it yourself |
 | Health tab red: "Needs fix: ..." | The site's page changed | Ask the automation chat: paste the red line |
-| "No good run in 3 hours" | Mac was asleep or off | Keep the Mac on and plugged in during the day |
+| "No good run in 4 hours" | Mac was asleep or off at run time | Keep the Mac on and plugged in during the day |
 | Doctor: "timer is off" or "older copy" | Timer not installed or out of date | `npm run timer:install` |
 | Doctor: "clasp is logged out" | Apps Script deploys need you | `npm run clasp:login` |
 | Doctor: "Sheet not reachable" | Wi-Fi, or the secret changed | Check Wi-Fi; if "bad secret", run `makeSecret` in Apps Script and update `.env` |
@@ -134,7 +134,7 @@ Private answers (pay, phone, notice) are in `private/answers.local.json`, which 
 - `shared/config.json`: titles (tracks), excluded words, cities, caps, notes, `crossSite` rule. Edit this to change filters.
 - `shared/filters.mjs`, `shared/sheet.mjs`: fit rules; Sheet calls with retries and an offline queue.
 - `apps-script/Tracker.gs`: the Sheet side. Health tab (one line per site, red when something is wrong), a tab per site, Runs tab (one row per run). Format defined in code; `setupTracker` applies it and fixes old rows.
-- `scripts/timer.sh`: hourly timer per site, 8am to 11pm, at each site's `runMinute` (Instahyre :00, Wellfound :30). `npm run timer:install` installs both. `scripts/sheet-deploy.sh` (`npm run sheet:deploy`): pushes the Apps Script with clasp and reapplies the format.
+- `scripts/timer.sh`: timer per site at the hours in `schedule.runHours` (8, 11, 14, 17, 20, 23 IST since 1 Nov), at each site's `runMinute` (Instahyre :00, Wellfound :30). `npm run timer:install` installs both. `scripts/sheet-deploy.sh` (`npm run sheet:deploy`): pushes the Apps Script with clasp and reapplies the format.
 - `docs/workflow.html`: the flow page (one section per site, to be updated with Wellfound).
 - `private/answers.local.json`: private answers (git ignored).
 
@@ -187,7 +187,7 @@ Also from Instahyre's help centre: an application cannot be withdrawn once sent.
 
 Wellfound's terms ban "automated or non-automated harvesting, collection or scraping" of content, and any automated system that puts "more ... load" on its servers "than a human can reasonably produce". Worst case: the account is suspended. Milder than Instahyre's, as long as the bot moves at a person's pace.
 
-**Her decision (20 Oct 2026): yes, she accepts the account risk.** Cap: 5 applications a day, at least 3 minutes apart. Raise after a clean week. Wellfound treats the profile as the application, so the profile check comes first.
+**Her decision (20 Oct 2026): yes, she accepts the account risk.** Cap: 5 applications a day, at least 3 minutes apart. Raise after a clean week. **Raised to 10 a day on 1 Nov 2026 (her call)**, see Schedule below. Wellfound treats the profile as the application, so the profile check comes first.
 
 ### Wellfound recon (20 Oct 2026, nothing applied)
 
@@ -236,3 +236,13 @@ Wellfound did not notify her when a founder messaged. Now each hourly Wellfound 
 - **Her colours:** light green fill = Applied, light red = Skipped. An hourly cloud job (`tidyHourly`) turns them into Status (never overriding Replied, Interview, Offer, Rejected, Viewed or No reply), moves Skipped rows to the **Skipped** tab, and sorts each site tab: Needs you, then Applied, then the rest, newest first.
 - **Never again:** the duplicate checks (link and company plus role) include the Skipped tab, on the Mac and in the cloud, so skipped jobs never come back. A light blue-grey fill (2 Glassdoor rows) is left alone until she says what it means.
 - Proof: before Needs you 29, Applied 10, Skipped 7 (in site tabs); after Needs you 16, Applied 13, Skipped tab 17; a second dry run changes nothing.
+
+## Schedule: every 3 hours (1 Nov 2026, her call)
+
+After the laptop reset she chose fewer, spaced-out runs to look less like a bot: each site runs 6 times a day instead of 16.
+
+- **Run times (IST):** 8am, 11am, 2pm, 5pm, 8pm, 11pm. Instahyre at :00, Wellfound at :30, so the two never run at once. Set in `shared/config.json` `schedule.runHours`.
+- **Daily caps:** Instahyre 10 (unchanged), Wellfound 10 (was 5; she accepted the risk again on 1 Nov). Wellfound still applies only with a note she approved for that exact job.
+- **At most 3 applies per run** (`perRunCap`), so 10 a day is spread across the day instead of one burst. Gaps between applies are unchanged (Instahyre 90 to 180 s, Wellfound 3 to 6 min).
+- **Trade-off:** a new job can wait up to 3 hours before the bot sees it.
+- **Health:** red after 4 hours without a good run (was 3), so the gap between runs never shows red. Cloud jobs (Gmail alerts, career pages, replies) stay hourly.

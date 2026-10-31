@@ -135,5 +135,8 @@ const CONFIG = {
         "slug": "sarvam"
       }
     ]
+  },
+  "schedule": {
+    "staleHours": 4
   }
 };

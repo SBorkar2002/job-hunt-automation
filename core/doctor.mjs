@@ -39,10 +39,10 @@ for (const site of Object.keys(config.sites)) {
   if (!last) { fix(`${label}: no live run yet`, `npm run timer:run-now${site === 'instahyre' ? '' : ':' + site}`); continue; }
   if (last.health === 'Login expired') fix(`${label}: logged out`, `npm run ${site}:login`);
   else if (last.health === 'Bot check') fix(`${label}: a CAPTCHA appeared`, `open ${label} in the bot's Chrome yourself (npm run ${site}:login) and finish it`);
-  else if (last.health === 'Site error') good(`${label}: last run hit an error on the site's side (${last.errors.join('; ')}); it retries every hour`);
+  else if (last.health === 'Site error') good(`${label}: last run hit an error on the site's side (${last.errors.join('; ')}); it retries next run`);
   else if (/^Needs fix/.test(last.health)) fix(`${label}: ${last.health}`, `ask the automation chat: "${label} needs fix: ${last.errors.join('; ')}"`);
   else if (/^Error/.test(last.health)) fix(`${label}: ${last.health}`, `npm run timer:run-now${site === 'instahyre' ? '' : ':' + site}, and if it repeats, ask the automation chat`);
-  else if (istHour() >= 9 && istHour() < 23 && ageH(last.runAt) > 3) fix(`${label}: last run ${Math.round(ageH(last.runAt))} hours ago`, 'keep the Mac awake and plugged in during the day, or run: npm run timer:install');
+  else if (istHour() >= 9 && istHour() < 23 && ageH(last.runAt) > config.schedule.staleHours) fix(`${label}: last run ${Math.round(ageH(last.runAt))} hours ago`, 'keep the Mac awake and plugged in during the day, or run: npm run timer:install');
   else good(`${label}: OK, last run ${last.runAt}, today ${last.appliedToday} of ${last.cap}`);
 }
 

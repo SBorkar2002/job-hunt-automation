@@ -22,7 +22,7 @@ import { sleep, istNow, nextRunIst, jobKey, capture, debugDir, pruneDebug } from
 
 const [siteName, ...args] = process.argv.slice(2);
 const site = (await import(`../sites/${siteName}.mjs`)).default;
-const { tab: TAB, dailyCap, minGapSeconds } = config.sites[site.name];
+const { tab: TAB, dailyCap, perRunCap = Infinity, minGapSeconds } = config.sites[site.name];
 const LIVE = args.includes('--live');
 const DRY = !LIVE;
 const INSPECT = args.includes('--inspect');
@@ -84,7 +84,7 @@ const summary = {
   runAt: istNow(), site: site.label, mode: DRY ? 'dry run' : 'live',
   seen: 0, matched: 0, applied: 0, needsYou: 0, youApplied: 0,
   needsTop: '', skipped: {}, nearMisses: [], errors: [], health: 'OK',
-  appliedToday: state.appliedToday(), cap: dailyCap, nextRun: nextRunIst(config.sites[site.name].runMinute || 0),
+  appliedToday: state.appliedToday(), cap: dailyCap, nextRun: nextRunIst(config.sites[site.name].runMinute || 0, config.schedule.runHours),
 };
 const skip = (reason, label) => {
   summary.skipped[reason] = (summary.skipped[reason] || 0) + 1;
@@ -214,6 +214,7 @@ try {
       }
       if (state.appliedToday() >= dailyCap) { log(`Daily cap of ${dailyCap} reached.`); break; }
       if (summary.applied >= LIMIT) { log(`Limit of ${LIMIT} for this run reached.`); break; }
+      if (summary.applied >= perRunCap) { log(`${perRunCap} applied this run; the rest wait for the next run.`); break; }
 
       job.track = fit.track;
       // She skipped this company and role before (on any site): never bring it back.

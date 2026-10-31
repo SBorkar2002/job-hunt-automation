@@ -91,17 +91,24 @@
   "portfolio": "https://sejalborkar.vercel.app",
   "resumeUrl": "https://sejalborkar.vercel.app/resume",
   "resumeVersion": "site-v1",
+  "schedule": {
+    "_about": "IST hours the Mac timers run, each site at its runMinute. A good run older than staleHours (9am to 11pm) turns Health red. perRunCap spreads a site's daily cap across runs.",
+    "runHours": [8, 11, 14, 17, 20, 23],
+    "staleHours": 4
+  },
   "sites": {
     "instahyre": {
       "tab": "Instahyre",
       "dailyCap": 10,
+      "perRunCap": 3,
       "minGapSeconds": 90,
       "ref": "instahyre",
       "runMinute": 0
     },
     "wellfound": {
       "tab": "Wellfound",
-      "dailyCap": 5,
+      "dailyCap": 10,
+      "perRunCap": 3,
       "minGapSeconds": 180,
       "ref": "wellfound",
       "postedWithinHours": 336,
