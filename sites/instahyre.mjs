@@ -29,6 +29,7 @@ const feed = new Map();
 let feedSeen = false;
 let searchSeen = 0;
 let searchLocation = '';
+let searchTitle = '';
 
 // Search results: same fields, but the job is the object itself and the link is public_url.
 function collectSearch(url, body) {
@@ -43,6 +44,7 @@ function collectSearch(url, body) {
       company: (j.employer?.company_name || '').trim(),
       location: j.locations || '',
       jobLink: j.public_url ? new URL(j.public_url, 'https://www.instahyre.com').href : '',
+      source: `Search: ${searchTitle}, ${searchLocation}`,
     });
   }
 }
@@ -60,6 +62,7 @@ function collect(url, body) {
       company: (o.employer?.company_name || j.hiring_company_name || '').trim(),
       location: j.locations || '',
       jobLink: j.opportunity_url ? `https://www.instahyre.com${j.opportunity_url}` : '',
+      source: 'Recommended feed',
     });
   }
 }
@@ -81,7 +84,7 @@ export default {
 
   // Job list: the recommended feed plus one search, newest first.
   async jobs(page) {
-    feed.clear(); feedSeen = false; searchSeen = 0; searchLocation = '';
+    feed.clear(); feedSeen = false; searchSeen = 0; searchLocation = ''; searchTitle = '';
     await page.goto(LIST, { waitUntil: 'domcontentloaded' });
     await sleep(4000);
     if (feedSeen) await this.search(page);
@@ -104,7 +107,7 @@ export default {
       await page.getByRole('button', { name: 'Search', exact: true }).click();
       await sleep(5000);
       const city = new RegExp(`^${location} \\(\\d+\\)`);
-      searchLocation = location;
+      searchLocation = location; searchTitle = title;
       await page.getByLabel(city).first().check({ timeout: 1500 }).catch(() => page.getByText(city).first().click());
       await sleep(6000);
       console.log(`Search "${title}" in ${location}: ${searchSeen} new jobs`);

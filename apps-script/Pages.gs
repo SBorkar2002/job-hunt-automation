@@ -37,9 +37,11 @@ function checkPages() {
       // Several places in one listing: it fits if any of them is yours.
       const fit = fits_(Object.assign({}, job, { location: CONFIG.locations.some(l => job.location.toLowerCase().indexOf(l) >= 0) ? job.location : (job.location ? job.location : '') }));
       if (!fit.ok || !job.jobLink || hasJob_('Career pages', job.jobLink)) return;
+      // Postings open for months are usually filled or evergreen (Sarvam's Product Designer was 5 months old).
+      if (job.postedAt instanceof Date && (Date.now() - job.postedAt.getTime()) / 864e5 > 45) return;
       addJob('Career pages', Object.assign(job, {
-        action: 'Needs you', status: 'Needs you', resume: 'None', note: 'None',
-        notes: 'New on ' + b.company + "'s careers page (" + fit.track + '). To apply with your answers filled in, run on the Mac: npm run fill -- ' + job.jobLink,
+        action: 'Needs you', status: 'Needs you', resume: 'None', note: 'None', source: 'Careers page',
+        notes: 'Track: ' + fit.track + ' · Apply: npm run fill -- ' + job.jobLink,
       }));
       counts[b.company] = (counts[b.company] || 0) + 1;
     });
