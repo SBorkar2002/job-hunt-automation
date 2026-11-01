@@ -101,7 +101,13 @@
       "tab": "Instahyre",
       "dailyCap": 10,
       "perRunCap": 3,
+      "maxPagesPerRun": 12,
       "minGapSeconds": 90,
+      "search": {
+        "_about": "Besides the recommended feed, each run types one search into Instahyre (the next title each run) and ticks this city.",
+        "titles": ["Product Designer", "UX Designer", "UI/UX Designer"],
+        "location": "Bangalore"
+      },
       "ref": "instahyre",
       "runMinute": 0
     },

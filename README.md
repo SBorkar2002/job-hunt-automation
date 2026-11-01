@@ -252,3 +252,12 @@ After the laptop reset she chose fewer, spaced-out runs to look less like a bot:
 Epifi is winding down, so the product note no longer says she works there now, and it does not say the role ended either: "Hi {company} team, I'm Sejal, a product designer who ships GenAI products, most recently at Epifi. I'd love to bring that to the {role} role. My work is here: {portfolio}" (`note-v2`). The visual note is unchanged. `npm run fill` still types "Epifi" for current company; switch it once the shutdown is final.
 
 **Same day, v3 (her OK):** plainer, without the stock closer: "Hi {company} team, I'm Sejal, a product designer. Most recently I designed GenAI features at Epifi, from first idea to launch. My work is here: {portfolio}" (`note-v3`). Used where no per-job note is approved: Instahyre cover-note fields and `npm run fill`. Wellfound always sends the per-job note she approves.
+
+## Instahyre search (built 1 Nov 2026, her OK)
+
+The recommended feed alone found 4 jobs on 1 Nov, none a fit. Searching "Product Designer" in Bangalore found 3,348.
+
+- **Recon (read-only, 1 Nov):** the search box calls `job_search?skills=<title>&jobLocations=<city>` (35 per page, most relevant first). Search links opened directly bounce back to the feed, so the bot types the search like a person. 24 of the first 35 passed title and place; on 10 job pages, 6 passed years (Jodo, SuperKalam, Supernova, eloelo; two companies posted the role twice) and 4 asked for 3+ years. Apply button present on all 10, no pay shown.
+- **Each run:** feed first, then one search (`sites.instahyre.search`): the next of Product Designer, UX Designer, UI/UX Designer each run, with Bangalore ticked. A failed search never stops the run; the feed still works.
+- **One application per company and role on a site:** a second posting of the same role is skipped ("same role"). A company and role skipped for years or pay is remembered, so its other postings skip without opening their pages.
+- **Pacing:** 8 to 20 seconds after each job page, at most 12 job pages per run (`maxPagesPerRun`); the rest wait for the next run. Caps unchanged (10 a day, 3 per run).
