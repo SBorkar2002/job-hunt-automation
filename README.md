@@ -261,3 +261,4 @@ The recommended feed alone found 4 jobs on 1 Nov, none a fit. Searching "Product
 - **Each run:** feed first, then one search (`sites.instahyre.search`): the next of Product Designer, UX Designer, UI/UX Designer each run, with Bangalore ticked. A failed search never stops the run; the feed still works.
 - **One application per company and role on a site:** a second posting of the same role is skipped ("same role"). A company and role skipped for years or pay is remembered, so its other postings skip without opening their pages.
 - **Pacing:** 8 to 20 seconds after each job page, at most 12 job pages per run (`maxPagesPerRun`); the rest wait for the next run. Caps unchanged (10 a day, 3 per run).
+- **First live apply from search, 1 Nov 2026 05:47 (her pick):** Loop Health, Product Designer (job 438957). Instahyre showed "Application sent!", the row is Applied in the Instahyre tab, Health "1 of 10 applied". Timer refreshed: search runs on every timed run from 8am.
