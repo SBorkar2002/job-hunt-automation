@@ -22,7 +22,7 @@ import { sleep, istNow, nextRunIst, jobKey, capture, debugDir, pruneDebug } from
 
 const [siteName, ...args] = process.argv.slice(2);
 const site = (await import(`../sites/${siteName}.mjs`)).default;
-const { tab: TAB, dailyCap, perRunCap = Infinity, minGapSeconds } = config.sites[site.name];
+const { tab: TAB, dailyCap, perRunCap = Infinity, minGapSeconds, maxPagesPerRun = Infinity } = config.sites[site.name];
 const LIVE = args.includes('--live');
 const DRY = !LIVE;
 const INSPECT = args.includes('--inspect');
@@ -152,6 +152,16 @@ async function crossSiteHold(job, key) {
   return note;
 }
 
+// Same company and role already applied on this site (another posting of it, or earlier this run).
+const rolesThisRun = new Set();
+let pagesOpened = 0;
+function sameRoleHere(job, key) {
+  if (rolesThisRun.has(key)) return 'already applied to this role this run';
+  const prior = appliedAnywhere()[key];
+  if (prior?.site === site.label && prior.jobLink !== job.jobLink) return `already applied to this role on ${prior.date.slice(0, 10)}`;
+  return null;
+}
+
 let stop = false;
 try {
   log(`\n=== ${summary.runAt} IST · ${site.label} · ${DRY ? 'DRY RUN (applies to nothing, writes nothing)' : 'LIVE'}${INSPECT ? ' + inspect' : ''} ===`);
@@ -216,6 +226,10 @@ try {
       if (summary.applied >= LIMIT) { log(`Limit of ${LIMIT} for this run reached.`); break; }
       if (summary.applied >= perRunCap) { log(`${perRunCap} applied this run; the rest wait for the next run.`); break; }
 
+      const same = sameRoleHere(job, key);
+      if (same) { s.handled[job.id] = 'same role'; skip('same role', `${label} (${same})`); continue; }
+      if (s.roleSkips[key] && !ONLY) { s.handled[job.id] = 'skipped'; skip(s.roleSkips[key].split(' ')[0] === 'pay' ? 'pay' : 'level', `${label} (${s.roleSkips[key]}, another posting)`); continue; }
+
       job.track = fit.track;
       // She skipped this company and role before (on any site): never bring it back.
       const known = DRY ? null : await lookup(job.company, job.role);
@@ -223,13 +237,15 @@ try {
       const hold = await crossSiteHold(job, key);
       if (hold) { skip('applied on another site', `${label} (${hold})`); continue; }
 
+      if (pagesOpened >= maxPagesPerRun) { log(`Opened ${maxPagesPerRun} job pages this run; the rest wait for the next run.`); break; }
+      if (pagesOpened++) await sleep((8 + Math.random() * 12) * 1000); // a person reads a page or two, not twenty a minute
       Object.assign(job, await site.details(page, job), { payChecked: true });
       const midBlock = await blocked();
       if (midBlock) { summary.health = midBlock.health; summary.errors.push(midBlock.msg); log(`STOP: ${midBlock.msg}`); break; }
       if (INSPECT) await capture(page, site.name, `job-${job.id}`);
 
       const fit2 = ONLY ? { ok: true } : fits(job, site.name);
-      if (!fit2.ok && !fit2.needs) { skip(fit2.reason.split(' ')[0] === 'pay' ? 'pay' : 'level', `${label} (${fit2.reason})`); s.handled[job.id] = 'skipped'; state.save(); continue; }
+      if (!fit2.ok && !fit2.needs) { skip(fit2.reason.split(' ')[0] === 'pay' ? 'pay' : 'level', `${label} (${fit2.reason})`); s.handled[job.id] = 'skipped'; s.roleSkips[key] = fit2.reason; state.save(); continue; }
       summary.matched++;
       log(`  fits: ${label} (${fit.track})`);
       if (fit2.needs) { await needsYou(rowFor(job), fit2.reason); s.handled[job.id] = 'needs you'; s.needs[job.id] = { jobLink: job.jobLink, company: job.company, role: job.role }; state.save(); continue; }
@@ -241,6 +257,7 @@ try {
         log(`STOP: ${result.broken}`);
         break;
       }
+      if (result.dry || result.applied) rolesThisRun.add(key);
       if (result.dry) log(`  [dry run] would apply. ${site.sent(job).note.startsWith('None') ? 'No note.' : 'Note: ' + site.sent(job).note}`);
       if (result.needs) {
         await needsYou(rowFor(job), result.needs);

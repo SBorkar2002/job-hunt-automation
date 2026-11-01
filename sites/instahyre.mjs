@@ -8,9 +8,13 @@
 // - "Apply now" is a button inside a link that catches the mouse, so we trigger the button.
 // - After applying, the page shows "Application sent!" and the button is gone.
 // - One-click apply sends the resume on her Instahyre profile and no note.
+// - Search (recon 1 Nov 2026): typing a title in the search box and ticking a city calls
+//   job_search?skills=...&jobLocations=... (35 per page, most relevant first). Search links
+//   opened directly bounce back to the feed, so the bot types the search like a person.
 import { payTopLpa } from '../shared/filters.mjs';
 import { fillForm } from '../core/forms.mjs';
 import { sleep } from '../core/util.mjs';
+import { config } from '../shared/config.mjs';
 
 const LIST = 'https://www.instahyre.com/candidate/opportunities/?matching=true';
 const TEXT = {
@@ -21,8 +25,27 @@ const TEXT = {
 
 const feed = new Map();
 let feedSeen = false;
+let searchSeen = 0;
+
+// Search results: same fields, but the job is the object itself and the link is public_url.
+function collectSearch(url, body) {
+  const { location } = config.sites.instahyre.search || {};
+  if (!/\/api\/v1\/job_search\?/.test(url) || !url.includes(`jobLocations=${encodeURIComponent(location)}`) || !Array.isArray(body?.objects)) return;
+  for (const j of body.objects) {
+    if (!j.id || j.is_active === false || j.is_internship || feed.has(String(j.id))) continue;
+    searchSeen++;
+    feed.set(String(j.id), {
+      id: String(j.id),
+      role: (j.title || j.candidate_title || '').trim(),
+      company: (j.employer?.company_name || '').trim(),
+      location: j.locations || '',
+      jobLink: j.public_url ? new URL(j.public_url, 'https://www.instahyre.com').href : '',
+    });
+  }
+}
 
 function collect(url, body) {
+  collectSearch(url, body);
   if (!/candidate_opportunities\/candidate_matching\?/.test(url) || !Array.isArray(body?.objects)) return;
   feedSeen = true;
   for (const o of body.objects) {
@@ -53,12 +76,36 @@ export default {
     });
   },
 
-  // Job list, newest first.
+  // Job list: the recommended feed plus one search, newest first.
   async jobs(page) {
-    feed.clear(); feedSeen = false;
+    feed.clear(); feedSeen = false; searchSeen = 0;
     await page.goto(LIST, { waitUntil: 'domcontentloaded' });
     await sleep(4000);
+    if (feedSeen) await this.search(page);
     return [...feed.values()].sort((x, y) => Number(y.id) - Number(x.id));
+  },
+
+  // One search per run, rotating titles every run, in her city. A failed search never stops the run.
+  async search(page) {
+    const { titles = [], location } = config.sites.instahyre.search || {};
+    if (!titles.length || !location) return;
+    const title = titles[Math.floor(Date.now() / (3 * 36e5)) % titles.length];
+    try {
+      const box = page.locator('#skills-drop-select-job-search-selectized');
+      await box.click();
+      await box.pressSequentially(title, { delay: 80 + Math.random() * 60 });
+      await sleep(1200);
+      await page.keyboard.press('Enter');
+      await sleep(700);
+      await page.getByRole('button', { name: 'Search', exact: true }).click();
+      await sleep(5000);
+      const city = new RegExp(`^${location} \\(\\d+\\)`);
+      await page.getByLabel(city).first().check({ timeout: 5000 }).catch(() => page.getByText(city).first().click());
+      await sleep(6000);
+      console.log(`Search "${title}" in ${location}: ${searchSeen} new jobs`);
+    } catch (e) {
+      console.log(`Search "${title}" did not work this run (${e.message.split('\n')[0]}); using the feed only`);
+    }
   },
 
   // Start-of-run check: did the job list load the way we expect?

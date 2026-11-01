@@ -15,6 +15,7 @@ export function siteState(site, { dryRun }) {
   const s = read(path, { handled: {}, days: {} });
   s.needs ||= {};
   s.crossWait ||= {};
+  s.roleSkips ||= {}; // company|role skipped for years or pay: other postings of it skip without a page load
   return {
     data: s,
     appliedToday: () => (s.days[istToday()] || []).length,
