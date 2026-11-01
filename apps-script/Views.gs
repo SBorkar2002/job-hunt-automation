@@ -54,13 +54,15 @@ function ensureSourceColumn_(ss) {
 
 /** Old rows: where each job came from, worked out from its tab and notes. Only fills blanks. */
 function backfillSource_(ss) {
-  const iSrc = col(COLUMNS, 'Source') - 1, iNotes = col(COLUMNS, 'Notes') - 1, iLink = col(COLUMNS, 'Job link') - 1;
-  const guess = (tab, notes, link) => {
+  const iSrc = col(COLUMNS, 'Source') - 1, iNotes = col(COLUMNS, 'Notes') - 1, iLink = col(COLUMNS, 'Job link') - 1, iFound = col(COLUMNS, 'Found at') - 1;
+  // From 1 Nov the Instahyre timer also searched, but its copy did not tag rows until the v2 merge.
+  const searchEra = new Date('2026-11-01T00:00:00+05:30');
+  const guess = (tab, notes, link, found) => {
     if (/You applied on LinkedIn/.test(notes)) return 'Your LinkedIn application';
     if (/alert email/.test(notes)) return tab + ' alert email';
     if (tab === 'Career pages') return 'Careers page';
     if (tab === 'Wellfound') return 'Saved search';
-    if (tab === 'Instahyre') return /job-438957-/.test(link) ? 'Search: UI/UX Designer, Bangalore' : 'Recommended feed';
+    if (tab === 'Instahyre') return /job-438957-/.test(link) ? 'Search: UI/UX Designer, Bangalore' : found instanceof Date && found >= searchEra ? 'Feed or search (before tagging)' : 'Recommended feed';
     return '';
   };
   TABS.concat(['Skipped']).forEach(name => {
@@ -70,8 +72,10 @@ function backfillSource_(ss) {
     const vals = sh.getRange(2, 1, sh.getLastRow() - 1, width).getValues();
     let changed = false;
     const out = vals.map(v => {
-      if (v[iSrc]) return [v[iSrc]];
-      const g = guess(name === 'Skipped' ? v[COLUMNS.length] : name, String(v[iNotes]), String(v[iLink]));
+      const tab = name === 'Skipped' ? v[COLUMNS.length] : name;
+      const early = tab === 'Instahyre' && v[iSrc] === 'Recommended feed' && v[iFound] instanceof Date && v[iFound] >= searchEra;
+      if (v[iSrc] && !early) return [v[iSrc]];
+      const g = guess(tab, String(v[iNotes]), String(v[iLink]), v[iFound]);
       if (g) changed = true;
       return [g];
     });
