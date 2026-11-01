@@ -16,11 +16,13 @@ const COLUMNS = [
   'Company', 'Role', 'Location / mode', 'Applicants',
   'Job link', 'Post link', 'Recruiter / poster',
   'Resume version', 'Note used', 'Action', 'Status',
-  'Response at', 'Follow-up on', 'Notes',
+  'Response at', 'Follow-up on', 'Notes', 'Source',
 ];
-const WIDTHS = { 'Company': 140, 'Role': 180, 'Location / mode': 130, 'Job link': 220, 'Recruiter / poster': 180, 'Note used': 260, 'Notes': 260 };
+const WIDTHS = { 'Company': 140, 'Role': 180, 'Location / mode': 130, 'Job link': 220, 'Recruiter / poster': 180, 'Note used': 260, 'Notes': 260, 'Source': 200 };
+// Never filled in practice (checked 1 Nov 2026 over 125 rows): hidden, still written.
+const HIDDEN = ['Minutes to apply', 'Applicants', 'Post link', 'Recruiter / poster'];
 
-const STATUSES = ['Applied', 'Needs you', 'Viewed', 'Replied', 'Interview', 'Offer', 'Rejected', 'No reply', 'Skipped'];
+const STATUSES = ['Applied', 'Needs you', 'Viewed', 'Replied', 'Interview', 'Offer', 'Rejected', 'No reply', 'Skipped', 'Expired'];
 const ACTIONS = ['Applied', 'Needs you', 'Skipped'];
 
 const RUN_COLUMNS = ['Run at', 'Site', 'Seen', 'Matched', 'Applied', 'Needs you', 'Skipped', 'Near misses', 'Errors', 'Next run'];
@@ -28,6 +30,11 @@ const HEALTH_COLUMNS = ['Site', 'Status', 'Last good run', 'Last run', 'Next run
 
 const props = () => PropertiesService.getScriptProperties();
 const col = (cols, name) => cols.indexOf(name) + 1;
+
+// Sheet v2 (To do, Pipeline, colours, expiry, No reply, evening email, Gmail outcome labels) runs on the
+// live Sheet only after she approves a preview: SHEET_V2 = on. A preview runs it on a copy (SS_OVERRIDE).
+let SS_OVERRIDE = null;
+const v2_ = () => Boolean(SS_OVERRIDE) || props().getProperty('SHEET_V2') === 'on';
 
 /** Run once, and again after any format change. Creates or reformats every tab and fixes old rows. */
 function setupTracker() {
@@ -37,17 +44,25 @@ function setupTracker() {
   ss.setSpreadsheetTimeZone('Asia/Kolkata');
   ss.setRecalculationInterval(SpreadsheetApp.RecalculationInterval.HOUR);
 
+  formatAll_(ss);
+
+  Logger.log('Tracker ready: ' + ss.getUrl());
+}
+
+/** Every tab's format, old rows fixed; with v2 also To do and Pipeline in front. Used for the live Sheet and previews. */
+function formatAll_(ss) {
+  ensureSourceColumn_(ss);
   setupHealth_(ss);
   TABS.forEach(name => setupTab_(ss, name));
   setupRuns_(ss);
   migrateRows_(ss);
+  backfillSource_(ss);
 
   const blank = ss.getSheetByName('Sheet1');
   if (blank && ss.getSheets().length > 1) ss.deleteSheet(blank);
   ss.setActiveSheet(ss.getSheetByName('Health'));
   ss.moveActiveSheet(1);
-
-  Logger.log('Tracker ready: ' + ss.getUrl());
+  if (v2_()) refreshViews_(ss);
 }
 
 /** Adds a new site tab later, for example addTab('Naukri'). */
@@ -72,6 +87,10 @@ function setupTab_(ss, name) {
   ['Found at', 'Posted at', 'Applied at', 'Response at'].forEach(n =>
     fmt_(sh.getRange(2, col(COLUMNS, n), rows), 'dd mmm yyyy, hh:mm'));
   fmt_(sh.getRange(2, col(COLUMNS, 'Follow-up on'), rows), 'dd mmm yyyy');
+  if (v2_()) {
+    HIDDEN.forEach(n => safe_(() => sh.hideColumns(col(COLUMNS, n))));
+    statusColours_(sh, sh.getRange(2, col(COLUMNS, 'Status'), rows));
+  }
 }
 
 function setupRuns_(ss) {
@@ -121,6 +140,7 @@ function migrateRows_(ss) {
 }
 
 function sheet_() {
+  if (SS_OVERRIDE) return SS_OVERRIDE;
   const id = props().getProperty('SHEET_ID');
   if (!id) throw new Error('Run setupTracker first.');
   return SpreadsheetApp.openById(id);
@@ -151,6 +171,7 @@ function addJob(tab, job) {
     'Action': job.action || 'Applied',
     'Status': job.status || job.action || 'Applied',
     'Notes': job.notes || '',
+    'Source': job.source || '',
   };
   sh.appendRow(COLUMNS.map(c => (c in row ? row[c] : '')));
 
@@ -204,6 +225,9 @@ function doPost(e) {
     if (a === 'mailraw') return out({ ok: true, result: mailRaw_() });
     if (a === 'mailpeek') return out({ ok: true, result: peekMail_() });
     if (a === 'triggers') return out({ ok: true, result: installTriggers() });
+    if (a === 'preview') return out({ ok: true, result: previewV2_() });
+    if (a === 'v2on') return out({ ok: true, result: enableV2_() });
+    if (a === 'views') return out({ ok: true, result: refreshViews_(sheet_()) });
     return out({ ok: false, error: 'unknown action' });
   } catch (err) {
     return out({ ok: false, error: String(err) + ' @ ' + String(err.stack || '').split('\n').slice(0, 4).join(' < ') });
@@ -368,7 +392,7 @@ function rowColors_() {
   const out = [];
   sheet_().getSheets().forEach(sh => {
     const name = sh.getName();
-    if (['Health', 'Runs', 'Messages', 'Follow-ups'].indexOf(name) >= 0) return;
+    if (['Health', 'Runs', 'Messages', 'Follow-ups', 'To do', 'Pipeline'].indexOf(name) >= 0) return;
     const last = sh.getLastRow();
     if (last < 2) return;
     const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
@@ -392,6 +416,7 @@ const ORDER = { 'Needs you': 0, 'Applied': 1 };
 
 function tidy_(dryRun) {
   const ss = sheet_();
+  if (!dryRun) ensureSourceColumn_(ss);
   const before = statusCounts_(), plan = { coloured: [], moved: [], skippedTabRows: 0 };
   let skip = ss.getSheetByName('Skipped');
   if (!skip && !dryRun) { skip = ss.insertSheet('Skipped'); header_(skip, COLUMNS.concat(['From tab']), WIDTHS); }

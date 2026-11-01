@@ -38,7 +38,7 @@ function checkPages() {
       const fit = fits_(Object.assign({}, job, { location: CONFIG.locations.some(l => job.location.toLowerCase().indexOf(l) >= 0) ? job.location : (job.location ? job.location : '') }));
       if (!fit.ok || !job.jobLink || hasJob_('Career pages', job.jobLink)) return;
       addJob('Career pages', Object.assign(job, {
-        action: 'Needs you', status: 'Needs you', resume: 'None', note: 'None',
+        action: 'Needs you', status: 'Needs you', resume: 'None', note: 'None', source: 'Careers page',
         notes: 'New on ' + b.company + "'s careers page (" + fit.track + '). To apply with your answers filled in, run on the Mac: npm run fill -- ' + job.jobLink,
       }));
       counts[b.company] = (counts[b.company] || 0) + 1;

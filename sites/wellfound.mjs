@@ -59,6 +59,7 @@ function collect(url, req, body) {
         company: (s.name || '').trim(),
         location: j.remote ? `Remote${places ? ` (${places})` : ''}` : places,
         jobLink: `https://wellfound.com/jobs/${j.id}-${j.slug}`,
+        source: 'Saved search',
         postedAt: j.liveStartAt ? istNow(new Date(j.liveStartAt * 1000)) : '',
         postedHoursAgo: j.liveStartAt ? (Date.now() / 1000 - j.liveStartAt) / 3600 : null,
         pay: j.compensation || '',

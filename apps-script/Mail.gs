@@ -6,6 +6,8 @@
  *   followUps     daily    Applied 7+ days, no reply -> a row in Follow-ups with a drafted nudge
  *   healthAlert   hourly   a site red for 3+ hours in the day -> one email to you
  *   weeklySummary Sunday   counts and open Needs you rows -> one email to you
+ *   eveningDigest daily 9pm  (v2) the day's applies, new To do and replies -> one email, only if any
+ *   onTodoEdit    on edit  (v2) a pick in the To do tab updates the site tab
  *
  * It only reads mail and labels the threads it handled (jobbot/seen). It never emails anyone but you.
  * Filters come from Config.gs, which the deploy writes from shared/config.json.
@@ -130,7 +132,7 @@ function checkAlerts() {
           addJob('LinkedIn', Object.assign(jobs.shift(), {
             company: sent[1].trim(), postedAt: '', action: 'Applied', status: 'Applied',
             appliedAt: Utilities.formatDate(msg.getDate(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss'),
-            resume: 'Your LinkedIn application', note: 'None', notes: 'You applied on LinkedIn (from the confirmation email)',
+            resume: 'Your LinkedIn application', note: 'None', notes: 'You applied on LinkedIn (from the confirmation email)', source: 'Your LinkedIn application',
           }));
         } else if (sent) jobs.shift();
         jobs.forEach(job => {
@@ -146,6 +148,7 @@ function checkAlerts() {
             action: 'Needs you', status: elsewhere.length ? 'Skipped' : 'Needs you',
             resume: 'None', note: 'None',
             notes: note + 'From a ' + src.tab + ' alert email (' + fit.track + '). Open the link and apply yourself.',
+            source: src.tab + ' alert email',
           }));
           counts[src.tab] = (counts[src.tab] || 0) + 1;
         });
@@ -186,6 +189,7 @@ function checkReplies() {
     const notes = sh.getRange(row.r, col(COLUMNS, 'Notes'));
     notes.setValue([notes.getValue(), status + ' (email: "' + subject.slice(0, 80) + '")'].filter(String).join(' · '));
     th.addLabel(done);
+    if (v2_()) th.addLabel(outcomeLabel_(status));
     n++;
   });
   return n;
@@ -289,7 +293,7 @@ function weeklySummary() {
 
 /** Creates the timers (safe to run again: it replaces them). */
 function installTriggers() {
-  const keep = ['checkAlerts', 'checkReplies', 'followUps', 'healthAlert', 'weeklySummary', 'checkPages', 'tidyHourly'];
+  const keep = ['checkAlerts', 'checkReplies', 'followUps', 'healthAlert', 'weeklySummary', 'checkPages', 'tidyHourly', 'eveningDigest', 'onTodoEdit'];
   ScriptApp.getProjectTriggers().filter(t => keep.indexOf(t.getHandlerFunction()) >= 0).forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('checkAlerts').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('checkPages').timeBased().everyHours(1).create();
@@ -298,6 +302,10 @@ function installTriggers() {
   ScriptApp.newTrigger('healthAlert').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('followUps').timeBased().everyDays(1).atHour(9).inTimezone('Asia/Kolkata').create();
   ScriptApp.newTrigger('weeklySummary').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(19).inTimezone('Asia/Kolkata').create();
+  if (v2_()) {
+    ScriptApp.newTrigger('eveningDigest').timeBased().everyDays(1).atHour(21).inTimezone('Asia/Kolkata').create();
+    ScriptApp.newTrigger('onTodoEdit').forSpreadsheet(props().getProperty('SHEET_ID')).onEdit().create();
+  }
   return ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
 }
 
@@ -344,5 +352,6 @@ function resetAlertRows_() {
   return removed;
 }
 
-/** Hourly: her green/red fills become Status, Skipped rows move to the Skipped tab, tabs are sorted. */
-function tidyHourly() { return tidy_(false); }
+/** Hourly: her green/red fills become Status, Skipped rows move to the Skipped tab, tabs are sorted.
+ *  With v2 also: To do picks written back, expiry, No reply, To do and Pipeline rebuilt. */
+function tidyHourly() { return v2_() ? refreshViews_(sheet_()) : tidy_(false); }
