@@ -276,3 +276,17 @@ What changes, from her review of the real Sheet on 1 Nov (about 100 Needs you ro
 - **Gmail outcome labels:** company replies get Job hunt/Interview, /Replied, /Rejected or /Viewed (old replies labelled once at switch-on). The jobbot/seen and jobbot/reply-seen labels stay: they are how the reader knows what it already handled.
 
 How it ships: the code is gated by Script Property `SHEET_V2`. With it off, only the Source column appears. `preview` web-app action builds everything on a copy of the Sheet and returns its link; `v2on` switches it on for the live Sheet, labels old replies and adds the 9pm and To do edit timers.
+
+### Audit of every tab (1 Nov 2026, her ask) and what changed
+
+- **Reply reader was wrong on all 8 rows it moved:** auto-confirmations ("we have received your application") counted as Replied or even Interview (Ecolab, Intempt); Apple matched an Amazon verification code, an Apple ID email and a Vercel sign-in; Groww matched Groww's own newsletters; Sarvam AI "Interview" came from the bot's own weekly email. Fix: the company must be in the sender or subject, her own emails are ignored, newsletters and account emails are not job mail, confirmations are labelled Confirmation and leave the Status alone, Interview needs a real invite phrase. Tested on 22 subjects (14 false, 8 genuine): all right. The 8 rows go back to Applied at switch-on, with a note.
+- **Notes:** the same sentence on 114 rows becomes "Track: product" (Source says where it came from). New alert rows are written short. Career-page notes keep the fill command.
+- **Duplicates:** company names now match across sources (Red Baton Creative Marketing Solutions Private Limited = Red Baton, Lyzr AI = Lyzr, Weekday (YC W21) = Weekday). 5 To do duplicates found, 2 of them already applied (NTT DATA, Red Baton).
+- **Action column** repeated Status and contradicted it on 4 Indeed rows: hidden.
+- **Runs:** 462 rows, 220 of them hourly email checks that found nothing. Those now only update Health; Runs keeps 30 days.
+- **Health:** Email alerts shows "N new jobs today" and "Every hour" instead of "0 of 0 applied" and a blank.
+- **Skipped dates** showed as 10/21/2026 16:38:59: now formatted like the rest.
+- **Follow-ups:** new "How to send" column (Instahyre has no messaging, so drafts there need LinkedIn).
+- **Career pages:** postings older than 45 days are not added (Sarvam's Product Designer was 5 months old).
+- **Small:** the test row in Messages removed, empty Cutshort tab hidden, "From a Indeed" grammar and a broken "·" character gone with the old notes.
+- **Not changed, worth knowing:** "Posted at" on alert rows is when the alert email arrived, not when the job was posted. Locations are written as each site gives them (Bengaluru, Bangalore Urban, Greater Bengaluru Area).

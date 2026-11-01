@@ -147,7 +147,7 @@ function checkAlerts() {
             postedAt: Utilities.formatDate(msg.getDate(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss'),
             action: 'Needs you', status: elsewhere.length ? 'Skipped' : 'Needs you',
             resume: 'None', note: 'None',
-            notes: note + 'From a ' + src.tab + ' alert email (' + fit.track + '). Open the link and apply yourself.',
+            notes: note + 'Track: ' + fit.track,
             source: src.tab + ' alert email',
           }));
           counts[src.tab] = (counts[src.tab] || 0) + 1;
@@ -156,12 +156,37 @@ function checkAlerts() {
       th.addLabel(seen);
     });
   });
-  logRun_({ runAt: istNow_(), site: 'Email alerts', mode: 'live', seen: 0, matched: 0, applied: 0, needsYou: Object.keys(counts).reduce((a, k) => a + counts[k], 0),
-    skipped: {}, nearMisses: [], errors: [], health: 'OK', appliedToday: 0, cap: 0, nextRun: '' });
+  const found = Object.keys(counts).reduce((a, k) => a + counts[k], 0);
+  const dayKey = 'ALERTS_' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd');
+  const today = Number(props().getProperty(dayKey) || 0) + found;
+  props().setProperty(dayKey, String(today));
+  logRun_({ runAt: istNow_(), site: 'Email alerts', mode: 'live', seen: 0, matched: 0, applied: 0, needsYou: found,
+    skipped: {}, nearMisses: [], errors: [], health: 'OK', appliedToday: 0, cap: 0, nextRun: '',
+    quiet: !found, todayText: today + ' new jobs today', nextRunText: 'Every hour' });
   return counts;
 }
 
 /* ---------- 2. replies from companies ---------- */
+
+// Fixed 1 Nov 2026 after an audit found all 8 "replies" were false: auto-confirmations, newsletters,
+// verification codes and the bot's own weekly email. Now the company must be in the sender or subject,
+// her own emails are ignored, and a confirmation is a confirmation, not a reply.
+const ACK = /(received your (job )?application|thank(s| you)[ -,]*(we('ve| have) received|for (your )?(application|applying|your interest))|application (confirmation|received|submitted)|successfully submitted|^your application (at|to|for) )/i;
+const NOT_JOB = /(verification code|verify your|sign-?in|password|\botp\b|newsletter|digest|edition|what'?s new|webinar|\bipo\b|market|trading|invoice|receipt|unsubscribe from our)/i;
+const BOT_MAIL = /^(job hunt|job bot|new \w+ message from)/i;
+const REJECT = /(unfortunately|not (be )?moving forward|other candidates|decided (not )?to (pursue|move|proceed)|not a (fit|match)|regret to inform|position has been filled|will not be (progressing|proceeding))/i;
+const INTERVIEW = /(invite you (to|for) (an? )?(interview|call|chat|conversation)|schedul(e|ing) (an?|your) (interview|call|chat)|interview (invitation|invite|schedule|slot)|next round|your availability|book a (slot|time)|calendly\.com|take-?home|design (assignment|task|exercise))/i;
+
+/** What a company email means: Rejected, Interview, Viewed, Replied, 'ack' (confirmation) or null (not about a job). */
+function replyKind_(subject, body) {
+  if (BOT_MAIL.test(subject) || NOT_JOB.test(subject)) return null;
+  const text = subject + '\n' + body;
+  if (REJECT.test(text)) return 'Rejected';
+  if (INTERVIEW.test(text) && !ACK.test(subject)) return 'Interview';
+  if (ACK.test(subject) || ACK.test(body.slice(0, 600))) return 'ack';
+  if (/application was viewed/i.test(subject)) return 'Viewed';
+  return 'Replied';
+}
 
 function checkReplies() {
   const done = label_(REPLY_SEEN);
@@ -177,19 +202,23 @@ function checkReplies() {
     const body = msg.getPlainBody().slice(0, 4000);
     if (/application was sent to/i.test(subject)) { th.addLabel(done); return; } // her own confirmation
     if (alertFrom.test(from) && !/application was viewed|interview|status/i.test(subject)) { th.addLabel(done); return; }
-    const hay = (from + ' ' + subject + ' ' + body).toLowerCase();
-    const row = applied.find(r => r.companyKey.length > 2 && (hay.indexOf(r.companyKey) >= 0));
+    if (from.toLowerCase().indexOf(String(props().getProperty('OWNER_EMAIL') || '~').toLowerCase()) >= 0) { th.addLabel(done); return; }
+    const kind = replyKind_(subject, body);
+    if (!kind) { th.addLabel(done); return; }
+    const hay = (from + ' ' + subject).toLowerCase();
+    const row = applied.find(r => r.companyKey.length > 2 && hay.indexOf(r.companyKey) >= 0);
     if (!row) return;
-    let status = /application was viewed/i.test(subject) ? 'Viewed' : 'Replied';
-    if (/unfortunately|not (be )?moving forward|other candidates|decided to (pursue|move)|not a fit|regret to inform|position has been filled/i.test(hay)) status = 'Rejected';
-    else if (/interview|schedule a (call|chat)|your availability|next round|assignment|take-?home/i.test(hay)) status = 'Interview';
     const sh = sheet_().getSheetByName(row.tab);
-    sh.getRange(row.r, col(COLUMNS, 'Status')).setValue(status);
-    fmt_(sh.getRange(row.r, col(COLUMNS, 'Response at')).setValue(msg.getDate()), 'dd mmm yyyy, hh:mm');
     const notes = sh.getRange(row.r, col(COLUMNS, 'Notes'));
-    notes.setValue([notes.getValue(), status + ' (email: "' + subject.slice(0, 80) + '")'].filter(String).join(' · '));
+    if (kind === 'ack') {
+      notes.setValue([notes.getValue(), 'Confirmation email ("' + subject.slice(0, 80) + '")'].filter(String).join(' · '));
+    } else {
+      sh.getRange(row.r, col(COLUMNS, 'Status')).setValue(kind);
+      fmt_(sh.getRange(row.r, col(COLUMNS, 'Response at')).setValue(msg.getDate()), 'dd mmm yyyy, hh:mm');
+      notes.setValue([notes.getValue(), kind + ' (email: "' + subject.slice(0, 80) + '")'].filter(String).join(' · '));
+    }
     th.addLabel(done);
-    if (v2_()) th.addLabel(outcomeLabel_(status));
+    if (v2_()) th.addLabel(outcomeLabel_(kind === 'ack' ? 'Confirmation' : kind));
     n++;
   });
   return n;
@@ -213,7 +242,12 @@ function appliedRows_() {
 
 /* ---------- 3. follow-ups ---------- */
 
-const FOLLOW_COLUMNS = ['Due', 'Site', 'Company', 'Role', 'Job link', 'Recruiter / poster', 'Draft message', 'Done'];
+const FOLLOW_COLUMNS = ['Due', 'Site', 'Company', 'Role', 'Job link', 'Recruiter / poster', 'Draft message', 'Done', 'How to send'];
+// The drafts had no way to reach anyone on Instahyre (no messaging there), so each row says where to send it.
+function howToSend_(tab) {
+  return { 'LinkedIn': 'Message the recruiter or hiring manager on LinkedIn', 'Instahyre': 'Instahyre has no messages: find the recruiter on LinkedIn',
+    'Wellfound': 'Reply in Wellfound Messages', 'Career pages': 'Email the recruiter, or find them on LinkedIn' }[tab] || 'Find the recruiter on LinkedIn';
+}
 
 function followUps() {
   const ss = sheet_();
@@ -235,7 +269,7 @@ function followUps() {
       const poster = String(v[col(COLUMNS, 'Recruiter / poster') - 1] || '');
       const hi = poster ? 'Hi ' + poster.split(',')[0].split(' ')[0] + ',' : 'Hi,';
       const draft = hi + ' I applied for the ' + role + ' role at ' + company + ' last week and wanted to check in. I\'d love to talk about it, and my work is at sejalborkar.vercel.app. Thanks, Sejal';
-      fu.appendRow([new Date(), tab, company, role, link, poster, draft, false]);
+      fu.appendRow([new Date(), tab, company, role, link, poster, draft, false, howToSend_(tab)]);
       fmt_(fu.getRange(fu.getLastRow(), 1), 'dd mmm yyyy');
       fmt_(sh.getRange(i + 2, col(COLUMNS, 'Follow-up on')).setValue(new Date()), 'dd mmm yyyy');
       n++;

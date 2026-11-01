@@ -7,14 +7,17 @@
  *   Expired    Needs you older than NEEDS_YOU_DAYS leaves To do (alert jobs go stale fast).
  *   No reply   Applied or Viewed with no response after NO_REPLY_DAYS.
  *   Evening    one email to her at 9pm when the day had anything new; nothing on quiet days.
- *   Labels     company replies get a Gmail label by outcome: Job hunt/Interview, /Replied, /Rejected, /Viewed.
+ *   Labels     company replies get a Gmail label by outcome: Job hunt/Interview, /Replied, /Rejected, /Viewed,
+ *              and automatic confirmations Job hunt/Confirmation.
+ *   Cleanup    (once, at switch-on) false replies corrected, notes shortened, Skipped dates, test row, Cutshort hidden.
+ *   Duplicates the same company and role from two sources shows once in To do; already applied ones are skipped.
  *
  * Runs on the live Sheet only when SHEET_V2 = on (enableV2_), or on a copy (previewV2_).
  */
 
 const NEEDS_YOU_DAYS = 10;
 const NO_REPLY_DAYS = 14;
-const TODO_COLUMNS = ['Done?', 'Found', 'Days old', 'Site', 'Company', 'Role', 'What to do', 'Job link', 'Source'];
+const TODO_COLUMNS = ['Done?', 'Found', 'Days old', 'Site', 'Company', 'Role', 'Location', 'What to do', 'Job link', 'Source'];
 const TODO_DONE = ['Applied', 'Skip'];
 const LIVE_STATUSES = ['Interview', 'Offer', 'Replied'];
 const OUTCOME_LABEL = 'Job hunt';
@@ -109,7 +112,8 @@ function noReply_(ss) {
   let n = 0;
   eachJobRow_(ss, (v, r, sh) => {
     if (['Applied', 'Viewed'].indexOf(v[at_('Status')]) < 0 || v[at_('Response at')]) return;
-    if (!(daysSince_(v[at_('Applied at')]) > NO_REPLY_DAYS)) return;
+    // Jobs she marked applied herself have no Applied at: count from when the job was found.
+    if (!(daysSince_(v[at_('Applied at')] || v[at_('Found at')]) > NO_REPLY_DAYS)) return;
     sh.getRange(r, col(COLUMNS, 'Status')).setValue('No reply');
     addNote_(sh, r, 'No reply after ' + NO_REPLY_DAYS + ' days');
     n++;
@@ -155,14 +159,13 @@ function buildTodo_(ss) {
   eachJobRow_(ss, (v, r, sh, tab) => {
     if (v[at_('Status')] !== 'Needs you') return;
     const found = v[at_('Found at')];
-    const notes = String(v[at_('Notes')]);
     items.push(['', found, found instanceof Date ? Math.floor(daysSince_(found)) : '', tab, v[at_('Company')], v[at_('Role')],
-      notes.split(' · ').slice(-1)[0].slice(0, 160), v[at_('Job link')], v[at_('Source')]]);
+      v[at_('Location / mode')], whatToDo_(tab, String(v[at_('Notes')])), v[at_('Job link')], v[at_('Source')]]);
   });
   items.sort((a, b) => new Date(b[1] || 0) - new Date(a[1] || 0));
   td.clear();
   safe_(() => td.getRange(1, 1, td.getMaxRows(), td.getMaxColumns()).clearDataValidations());
-  header_(td, TODO_COLUMNS, { 'Done?': 90, 'Found': 130, 'Days old': 70, 'Site': 100, 'What to do': 320, 'Job link': 220, 'Source': 180 });
+  header_(td, TODO_COLUMNS, { 'Done?': 90, 'Found': 120, 'Days old': 70, 'Site': 100, 'Location': 130, 'What to do': 300, 'Job link': 220, 'Source': 180 });
   td.getRange(1, 1, 1, TODO_COLUMNS.length).setBackground('#fef7e0');
   if (items.length) {
     td.getRange(2, 1, items.length, TODO_COLUMNS.length).setValues(items);
@@ -170,6 +173,120 @@ function buildTodo_(ss) {
     td.getRange(2, 1, items.length).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(TODO_DONE, true).build());
   }
   return items.length;
+}
+
+/** One plain instruction per To do row. */
+function whatToDo_(tab, notes) {
+  if (['LinkedIn', 'Glassdoor', 'Indeed', 'Naukri'].indexOf(tab) >= 0) return 'Open the link and apply on ' + tab;
+  const fill = notes.match(/npm run fill -- \S+/);
+  if (fill) return 'On the Mac: ' + fill[0];
+  if (/Needs note/.test(notes)) return 'Say "draft notes" in the automation chat';
+  const reason = notes.split(' · ').filter(x => !/^(Track|track):/.test(x) && !/^\d|years|pay/.test(x)).slice(-1)[0];
+  return (reason || 'Open the link and apply').slice(0, 160);
+}
+
+/** Same company and role twice in To do: keep the newest. Already applied elsewhere: skip it. */
+function dedupeNeedsYou_(ss) {
+  const sent = ['Applied', 'Viewed', 'Replied', 'Interview', 'Offer', 'Rejected', 'No reply'];
+  const byKey = {};
+  eachJobRow_(ss, (v, r, sh, tab) => {
+    const key = companyKey_(v[at_('Company')]) + '|' + normRole_(v[at_('Role')]);
+    (byKey[key] = byKey[key] || []).push({ v: v, r: r, sh: sh, tab: tab });
+  });
+  let n = 0;
+  Object.keys(byKey).forEach(key => {
+    const rows = byKey[key];
+    if (rows.length < 2 || key.charAt(0) === '|') return;
+    const done = rows.find(x => sent.indexOf(x.v[at_('Status')]) >= 0);
+    const open = rows.filter(x => x.v[at_('Status')] === 'Needs you')
+      .sort((a, b) => new Date(b.v[at_('Found at')] || 0) - new Date(a.v[at_('Found at')] || 0));
+    open.forEach((x, i) => {
+      if (!done && i === 0) return;
+      x.sh.getRange(x.r, col(COLUMNS, 'Status')).setValue('Skipped');
+      addNote_(x.sh, x.r, done ? 'Already applied via ' + done.tab : 'Same job also in ' + open[0].tab);
+      n++;
+    });
+  });
+  return n;
+}
+
+/** Runs keeps 30 days; Health has the current picture. */
+function pruneRuns_(ss) {
+  const sh = ss.getSheetByName('Runs');
+  if (!sh || sh.getLastRow() < 3) return 0;
+  const cutoff = Date.now() - 30 * 864e5;
+  const dates = sh.getRange(2, 1, sh.getLastRow() - 1).getValues().flat();
+  let old = 0;
+  while (old < dates.length && dates[old] instanceof Date && dates[old].getTime() < cutoff) old++;
+  if (old) sh.deleteRows(2, old);
+  return old;
+}
+
+/* ---------- one-time cleanup at switch-on (and in a preview) ---------- */
+
+/** Rows the reply reader moved on a false email go back to Applied, with a note saying why. */
+function correctReplies_(ss) {
+  const fixed = [];
+  eachJobRow_(ss, (v, r, sh, tab) => {
+    if (['Replied', 'Interview', 'Viewed'].indexOf(v[at_('Status')]) < 0) return;
+    const marks = [];
+    String(v[at_('Notes')]).replace(/(Replied|Interview|Viewed|Rejected) \(email: "([^"]*)"\)/g, (m, s, subj) => { marks.push(subj); return m; });
+    if (!marks.length) return; // set by her, not the reader
+    if (marks.some(subj => ['Replied', 'Interview', 'Viewed', 'Rejected'].indexOf(replyKind_(subj, '')) >= 0 && !ACK.test(subj))) return;
+    sh.getRange(r, col(COLUMNS, 'Status')).setValue('Applied');
+    sh.getRange(r, col(COLUMNS, 'Response at')).setValue('');
+    addNote_(sh, r, 'Corrected 1 Nov: no reply yet (those emails were confirmations or not from the company)');
+    fixed.push(tab + ': ' + v[at_('Company')] + ' (' + v[at_('Status')] + ')');
+  });
+  return fixed;
+}
+
+/** The same sentence on 100+ rows becomes "Track: product"; the Source column says where it came from. */
+function cleanNotes_(ss) {
+  let n = 0;
+  TABS.concat(['Skipped']).forEach(name => {
+    const sh = ss.getSheetByName(name);
+    if (!sh || sh.getLastRow() < 2) return;
+    const range = sh.getRange(2, col(COLUMNS, 'Notes'), sh.getLastRow() - 1);
+    const vals = range.getValues().map(([x]) => {
+      const y = String(x)
+        .replace(/From an? [\w ]+? alert email \((\w+)\)\. Open the link and apply yourself\./g, 'Track: $1')
+        .replace(/New on .+?'s careers page \((\w+)\)\. To apply with your answers filled in, run on the Mac: (npm run fill -- \S+)/g, 'Track: $1 · Apply: $2')
+        .replace(/¬∑/g, '·');
+      if (y !== String(x)) n++;
+      return [y];
+    });
+    range.setValues(vals);
+  });
+  return n;
+}
+
+function oneTimeCleanup_(ss) {
+  const out = { correctedReplies: correctReplies_(ss), notesShortened: cleanNotes_(ss) };
+  const msg = ss.getSheetByName('Messages');
+  if (msg && msg.getLastRow() >= 2) {
+    const companies = msg.getRange(2, col(MSG_COLUMNS, 'Company'), msg.getLastRow() - 1).getValues().flat();
+    for (let i = companies.length - 1; i >= 0; i--) if (/^TEST \(from your job bot\)/.test(companies[i])) { msg.deleteRow(i + 2); out.testRowRemoved = true; }
+  }
+  const cut = ss.getSheetByName('Cutshort');
+  if (cut && cut.getLastRow() < 2) { safe_(() => cut.hideSheet()); out.cutshortHidden = true; }
+  const skip = ss.getSheetByName('Skipped');
+  if (skip && skip.getLastRow() >= 2) {
+    const rows = skip.getLastRow() - 1;
+    ['Found at', 'Posted at', 'Applied at', 'Response at'].forEach(n => fmt_(skip.getRange(2, col(COLUMNS, n), rows), 'dd mmm yyyy, hh:mm'));
+    HIDDEN.forEach(n => safe_(() => skip.hideColumns(col(COLUMNS, n))));
+  }
+  const fu = ss.getSheetByName('Follow-ups');
+  if (fu && fu.getLastRow() >= 1) {
+    const i = col(FOLLOW_COLUMNS, 'How to send');
+    fu.getRange(1, i).setValue('How to send').setFontWeight('bold');
+    fu.setColumnWidth(i, 260);
+    if (fu.getLastRow() >= 2) {
+      const sites = fu.getRange(2, col(FOLLOW_COLUMNS, 'Site'), fu.getLastRow() - 1).getValues();
+      fu.getRange(2, i, sites.length).setValues(sites.map(([s]) => [s ? howToSend_(s) : '']));
+    }
+  }
+  return out;
 }
 
 /** Installable edit trigger: a pick in To do updates the site tab within seconds. */
@@ -256,8 +373,10 @@ function buildPipeline_(ss) {
 function refreshViews_(ss) {
   const result = {
     picked: todoWriteback_(ss),
+    duplicates: dedupeNeedsYou_(ss),
     expired: expireNeedsYou_(ss),
     noReply: noReply_(ss),
+    runsPruned: pruneRuns_(ss),
   };
   tidy_(false);
   result.toDo = buildTodo_(ss);
@@ -300,19 +419,6 @@ function outcomeLabel_(status) {
   return label_(OUTCOME_LABEL + '/' + status);
 }
 
-/** One time: label the replies that came before v2 (threads the reply reader already handled). */
-function backfillOutcomeLabels_(ss) {
-  let n = 0;
-  eachJobRow_(ss, v => {
-    const st = v[at_('Status')];
-    if (['Replied', 'Interview', 'Offer', 'Rejected', 'Viewed'].indexOf(st) < 0) return;
-    const company = String(v[at_('Company')]).replace(/"/g, '').trim();
-    if (company.length < 3) return;
-    GmailApp.search('label:' + REPLY_SEEN.replace('/', '-') + ' "' + company + '"', 0, 3).forEach(th => { th.addLabel(outcomeLabel_(st)); n++; });
-  });
-  return n;
-}
-
 /* ---------- preview and switch-on ---------- */
 
 /** Builds v2 on a copy of the Sheet (her live Sheet is not touched) and returns the copy's link. */
@@ -328,7 +434,9 @@ function previewV2_() {
     ensureSourceColumn_(copy);
     TABS.forEach(name => setupTab_(copy, name));
     backfillSource_(copy);
+    const cleanup = oneTimeCleanup_(copy);
     const result = refreshViews_(copy);
+    result.cleanup = cleanup;
     result.url = copy.getUrl();
     return result;
   } finally {
@@ -336,10 +444,11 @@ function previewV2_() {
   }
 }
 
-/** After she approves the preview: v2 on the live Sheet, old replies labelled, timers updated. */
+/** After she approves the preview: v2 on the live Sheet, one-time cleanup, timers updated. */
 function enableV2_() {
   props().setProperty('SHEET_V2', 'on');
   const ss = sheet_();
+  const cleanup = oneTimeCleanup_(ss);
   formatAll_(ss);
-  return { labelled: backfillOutcomeLabels_(ss), triggers: installTriggers() };
+  return { cleanup: cleanup, triggers: installTriggers() };
 }

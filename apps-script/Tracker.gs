@@ -20,7 +20,8 @@ const COLUMNS = [
 ];
 const WIDTHS = { 'Company': 140, 'Role': 180, 'Location / mode': 130, 'Job link': 220, 'Recruiter / poster': 180, 'Note used': 260, 'Notes': 260, 'Source': 200 };
 // Never filled in practice (checked 1 Nov 2026 over 125 rows): hidden, still written.
-const HIDDEN = ['Minutes to apply', 'Applicants', 'Post link', 'Recruiter / poster'];
+// Action repeats Status (and contradicted it on 4 Indeed rows), so it is hidden too.
+const HIDDEN = ['Minutes to apply', 'Applicants', 'Post link', 'Recruiter / poster', 'Action'];
 
 const STATUSES = ['Applied', 'Needs you', 'Viewed', 'Replied', 'Interview', 'Offer', 'Rejected', 'No reply', 'Skipped', 'Expired'];
 const ACTIONS = ['Applied', 'Needs you', 'Skipped'];
@@ -280,15 +281,23 @@ function normRole_(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(jr|junior|sr|senior)\b/g, '').replace(/\s+/g, ' ').trim();
 }
 
+// Stronger than normCompany_: "Red Baton Creative Marketing Solutions Private Limited" = "Red Baton",
+// "Lyzr AI" = "Lyzr", "Weekday (YC W21)" = "Weekday", "NTT DATA North America" = "NTT DATA".
+function companyKey_(s) {
+  return normCompany_(String(s || '').replace(/\([^)]*\)/g, ' '))
+    .replace(/\b(ai|solutions?|services|software|digital|global|group|co|company|creative|marketing|north america|studios?|inc|tech)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
 function lookup_(company, role) {
-  const c = normCompany_(company), r = normRole_(role), found = [];
+  const c = companyKey_(company), r = normRole_(role), found = [];
   TABS.concat(['Skipped']).forEach(name => {
     const sh = sheet_().getSheetByName(name);
     if (!sh) return;
     const last = sh.getLastRow();
     if (last < 2) return;
     sh.getRange(2, 1, last - 1, COLUMNS.length).getValues().forEach(v => {
-      if (normCompany_(v[col(COLUMNS, 'Company') - 1]) === c && normRole_(v[col(COLUMNS, 'Role') - 1]) === r) {
+      if (companyKey_(v[col(COLUMNS, 'Company') - 1]) === c && normRole_(v[col(COLUMNS, 'Role') - 1]) === r) {
         found.push({ tab: name, status: v[col(COLUMNS, 'Status') - 1], appliedAt: v[col(COLUMNS, 'Applied at') - 1] });
       }
     });
@@ -303,11 +312,14 @@ function logRun_(run) {
   const skipped = Object.keys(run.skipped || {}).map(k => run.skipped[k] + ' ' + k).join(', ') || 'None';
   const near = (run.nearMisses || []).filter((v, i, a) => a.indexOf(v) === i).join(', ') || 'None';
   const needs = run.needsYou ? run.needsYou + (run.needsTop ? ' (' + run.needsTop + ')' : '') : 0;
-  const runs = ss.getSheetByName('Runs');
-  runs.appendRow([when(run.runAt), run.site, run.seen, run.matched, run.applied, needs, skipped, near, (run.errors || []).join('; ') || 'None', when(run.nextRun)]);
-  const rr = runs.getLastRow();
-  fmt_(runs.getRange(rr, 1), 'dd mmm yyyy, hh:mm');
-  fmt_(runs.getRange(rr, col(RUN_COLUMNS, 'Next run')), 'dd mmm, hh:mm');
+  // Hourly email checks that found nothing only update Health (they were 220 of 462 Runs rows).
+  if (!run.quiet) {
+    const runs = ss.getSheetByName('Runs');
+    runs.appendRow([when(run.runAt), run.site, run.seen, run.matched, run.applied, needs, skipped, near, (run.errors || []).join('; ') || 'None', when(run.nextRun)]);
+    const rr = runs.getLastRow();
+    fmt_(runs.getRange(rr, 1), 'dd mmm yyyy, hh:mm');
+    fmt_(runs.getRange(rr, col(RUN_COLUMNS, 'Next run')), 'dd mmm, hh:mm');
+  }
 
   const sh = ss.getSheetByName('Health');
   const last = sh.getLastRow();
@@ -322,8 +334,8 @@ function logRun_(run) {
     '=IF(I' + r + '="","",IF(AND(I' + r + '="OK",HOUR(NOW())>=9,HOUR(NOW())<23,NOW()-IFERROR(DATEVALUE(C' + r + ')+TIMEVALUE(C' + r + '),C' + r + ')>' + CONFIG.schedule.staleHours + '/24),"No good run in ' + CONFIG.schedule.staleHours + ' hours",I' + r + '))'));
   if (run.health === 'OK') set('Last good run', when(run.runAt));
   set('Last run', when(run.runAt));
-  set('Next run', when(run.nextRun));
-  set('Today', run.appliedToday + ' of ' + run.cap + ' applied');
+  set('Next run', run.nextRunText || when(run.nextRun));
+  set('Today', run.todayText || run.appliedToday + ' of ' + run.cap + ' applied');
   set('Login', run.health === 'Login expired' ? 'Expired: run npm run ' + String(run.site).toLowerCase() + ':login' : 'OK');
   set('Problem', (run.errors || []).join('; ') || 'None');
 }
