@@ -11,6 +11,8 @@
 // - Search (recon 1 Nov 2026): typing a title in the search box and ticking a city calls
 //   job_search?skills=...&jobLocations=... (35 per page, most relevant first). Search links
 //   opened directly bounce back to the feed, so the bot types the search like a person.
+// - Two locations ticked together sort by relevance, so remote jobs barely reach page one;
+//   each run searches one location instead (jobLocations=Work+From+Home for remote).
 import { payTopLpa } from '../shared/filters.mjs';
 import { fillForm } from '../core/forms.mjs';
 import { sleep } from '../core/util.mjs';
@@ -26,11 +28,12 @@ const TEXT = {
 const feed = new Map();
 let feedSeen = false;
 let searchSeen = 0;
+let searchLocation = '';
 
 // Search results: same fields, but the job is the object itself and the link is public_url.
 function collectSearch(url, body) {
-  const { location } = config.sites.instahyre.search || {};
-  if (!/\/api\/v1\/job_search\?/.test(url) || !url.includes(`jobLocations=${encodeURIComponent(location)}`) || !Array.isArray(body?.objects)) return;
+  if (!/\/api\/v1\/job_search\?/.test(url) || !Array.isArray(body?.objects)) return;
+  if (!searchLocation || !new URL(url).searchParams.getAll('jobLocations').includes(searchLocation)) return;
   for (const j of body.objects) {
     if (!j.id || j.is_active === false || j.is_internship || feed.has(String(j.id))) continue;
     searchSeen++;
@@ -78,18 +81,19 @@ export default {
 
   // Job list: the recommended feed plus one search, newest first.
   async jobs(page) {
-    feed.clear(); feedSeen = false; searchSeen = 0;
+    feed.clear(); feedSeen = false; searchSeen = 0; searchLocation = '';
     await page.goto(LIST, { waitUntil: 'domcontentloaded' });
     await sleep(4000);
     if (feedSeen) await this.search(page);
     return [...feed.values()].sort((x, y) => Number(y.id) - Number(x.id));
   },
 
-  // One search per run, rotating titles every run, in her city. A failed search never stops the run.
+  // One search per run: every title with every location in turn. A failed search never stops the run.
   async search(page) {
-    const { titles = [], location } = config.sites.instahyre.search || {};
-    if (!titles.length || !location) return;
-    const title = titles[Math.floor(Date.now() / (3 * 36e5)) % titles.length];
+    const { titles = [], locations = [] } = config.sites.instahyre.search || {};
+    const combos = titles.flatMap(title => locations.map(location => ({ title, location })));
+    if (!combos.length) return;
+    const { title, location } = combos[Math.floor(Date.now() / (3 * 36e5)) % combos.length];
     try {
       const box = page.locator('#skills-drop-select-job-search-selectized');
       await box.click();
@@ -100,7 +104,8 @@ export default {
       await page.getByRole('button', { name: 'Search', exact: true }).click();
       await sleep(5000);
       const city = new RegExp(`^${location} \\(\\d+\\)`);
-      await page.getByLabel(city).first().check({ timeout: 5000 }).catch(() => page.getByText(city).first().click());
+      searchLocation = location;
+      await page.getByLabel(city).first().check({ timeout: 1500 }).catch(() => page.getByText(city).first().click());
       await sleep(6000);
       console.log(`Search "${title}" in ${location}: ${searchSeen} new jobs`);
     } catch (e) {
