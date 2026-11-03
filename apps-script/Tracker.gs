@@ -229,6 +229,8 @@ function doPost(e) {
     if (a === 'preview') return out({ ok: true, result: previewV2_() });
     if (a === 'v2on') return out({ ok: true, result: enableV2_() });
     if (a === 'views') return out({ ok: true, result: refreshViews_(sheet_()) });
+    if (a === 'importPicks') return out({ ok: true, result: importPicks_(body.job.sourceId) });
+    if (a === 'correctReplies') { const ss = sheet_(); const fixed = correctReplies_(ss); return out({ ok: true, result: { fixed: fixed, after: refreshViews_(ss) } }); }
     return out({ ok: false, error: 'unknown action' });
   } catch (err) {
     return out({ ok: false, error: String(err) + ' @ ' + String(err.stack || '').split('\n').slice(0, 4).join(' < ') });
