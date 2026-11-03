@@ -175,6 +175,8 @@ const ACK = /(received your (job )?application|thank(s| you)[ -,]*(we('ve| have)
 const NOT_JOB = /(verification code|verify your|sign-?in|password|\botp\b|newsletter|digest|edition|what'?s new|webinar|\bipo\b|market|trading|invoice|receipt|unsubscribe from our)/i;
 const BOT_MAIL = /^(job hunt|job bot|new \w+ message from)/i;
 const REJECT = /(unfortunately|not (be )?moving forward|other candidates|decided (not )?to (pursue|move|proceed)|not a (fit|match)|regret to inform|position has been filled|will not be (progressing|proceeding))/i;
+// A company she also uses as a customer (Groww, 3 Nov: "Update on your Demat Account") must talk about the job.
+const JOB_WORDS = /(applica|applied|\brole\b|position|candida|interview|hiring|recruit|opportunit|resume|\bcv\b|your profile|job)/i;
 const INTERVIEW = /(invite you (to|for) (an? )?(interview|call|chat|conversation)|schedul(e|ing) (an?|your) (interview|call|chat)|interview (invitation|invite|schedule|slot)|next round|your availability|book a (slot|time)|calendly\.com|take-?home|design (assignment|task|exercise))/i;
 
 /** What a company email means: Rejected, Interview, Viewed, Replied, 'ack' (confirmation) or null (not about a job). */
@@ -185,7 +187,7 @@ function replyKind_(subject, body) {
   if (INTERVIEW.test(text) && !ACK.test(subject)) return 'Interview';
   if (ACK.test(subject) || ACK.test(body.slice(0, 600))) return 'ack';
   if (/application was viewed/i.test(subject)) return 'Viewed';
-  return 'Replied';
+  return JOB_WORDS.test(text) ? 'Replied' : null;
 }
 
 function checkReplies() {
