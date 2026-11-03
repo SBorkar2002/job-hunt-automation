@@ -128,20 +128,24 @@ function noReply_(ss) {
 /* ---------- To do ---------- */
 
 /** Her picks in To do go back to the site tab: Applied (with the time) or Skipped. */
-function todoWriteback_(ss) {
-  const td = ss.getSheetByName('To do');
+// from: the sheet whose To do holds her picks (normally the same one; a preview copy for importPicks_).
+function todoWriteback_(ss, from, report) {
+  const td = (from || ss).getSheetByName('To do');
   if (!td || td.getLastRow() < 2) return 0;
   const rows = td.getRange(2, 1, td.getLastRow() - 1, TODO_COLUMNS.length).getValues();
   let n = 0;
   rows.forEach(t => {
     const done = t[col(TODO_COLUMNS, 'Done?') - 1];
     if (TODO_DONE.indexOf(done) < 0) return;
+    const label = t[col(TODO_COLUMNS, 'Company') - 1] + ', ' + t[col(TODO_COLUMNS, 'Role') - 1] + ' (' + t[col(TODO_COLUMNS, 'Site') - 1] + ')';
     const sh = ss.getSheetByName(t[col(TODO_COLUMNS, 'Site') - 1]);
-    if (!sh || sh.getLastRow() < 2) return;
-    const links = sh.getRange(2, col(COLUMNS, 'Job link'), sh.getLastRow() - 1).getValues().flat();
+    const links = sh && sh.getLastRow() >= 2 ? sh.getRange(2, col(COLUMNS, 'Job link'), sh.getLastRow() - 1).getValues().flat() : [];
     const i = links.indexOf(t[col(TODO_COLUMNS, 'Job link') - 1]);
-    if (i < 0) return;
+    if (i < 0) { if (report) report.notFound.push(label); return; }
     const r = i + 2;
+    // A copy can be older than the live Sheet: never undo a later status (Applied by the bot, Replied...).
+    if (from && ['Needs you', 'Expired'].indexOf(sh.getRange(r, col(COLUMNS, 'Status')).getValue()) < 0) { if (report) report.alreadyMoved.push(label); return; }
+    if (report) (done === 'Applied' ? report.applied : report.skipped).push(label);
     if (done === 'Applied') {
       sh.getRange(r, col(COLUMNS, 'Status')).setValue('Applied');
       sh.getRange(r, col(COLUMNS, 'Action')).setValue('Applied');
@@ -291,6 +295,15 @@ function oneTimeCleanup_(ss) {
     }
   }
   return out;
+}
+
+/** Her picks made in a copy's To do (the preview she was given) applied to the live Sheet. */
+function importPicks_(sourceId) {
+  const ss = sheet_();
+  const report = { applied: [], skipped: [], alreadyMoved: [], notFound: [] };
+  todoWriteback_(ss, SpreadsheetApp.openById(sourceId), report);
+  report.after = refreshViews_(ss);
+  return report;
 }
 
 /** Installable edit trigger: a pick in To do updates the site tab within seconds. */
